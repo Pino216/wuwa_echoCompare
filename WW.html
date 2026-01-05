@@ -261,6 +261,15 @@
             pointer-events: none;
         }
         
+        /* Buff配置样式 */
+        .buff-config {
+            transition: all 0.3s ease;
+        }
+        .buff-config:hover {
+            background: rgba(74, 107, 255, 0.2) !important;
+            transform: translateX(5px);
+        }
+        
         /* 滚动条美化 */
         ::-webkit-scrollbar {
             width: 8px;
@@ -315,7 +324,7 @@
 
             <h3>动态 Buff 轨道</h3>
             <div id="buff_pool"></div>
-            <button class="btn" style="width:100%; background:#30363d; color:#fff;" onclick="addNewBuff()">+ 新增 Buff</button>
+            <button class="btn" style="width:100%; background:linear-gradient(135deg, #4a6bff, #6a8bff); color:#fff;" onclick="addNewBuff()">+ 新增 Buff</button>
         </div>
 
         <div class="panel">
@@ -687,8 +696,7 @@ options: {
         legend: {
             position: 'right',
             labels: {
-                // 1. 设置基础颜色（作为后备）
-                color: '#ffffff',
+                color: '#ff9800', // 改为橙色
                 font: { size: 12, weight: 'bold' },
                 generateLabels: function(chart) {
                     const data = chart.data;
@@ -700,10 +708,8 @@ options: {
                             return {
                                 text: `${label}: ${percentage}%`,
                                 fillStyle: data.datasets[0].backgroundColor[i],
-                                // 2. 关键：在生成的标签对象中强制指定文字颜色为白色
-                                fontColor: '#ffffff',
-                                // 兼容性处理：部分版本可能识别 color 属性
-                                color: '#ffffff',
+                                fontColor: '#ff9800', // 改为橙色
+                                color: '#ff9800', // 改为橙色
                                 hidden: isNaN(data.datasets[0].data[i]) || chart.getDatasetMeta(0).data[i].hidden,
                                 index: i
                             };
@@ -714,7 +720,7 @@ options: {
             }
         },
         tooltip: {
-            titleColor: '#ffffff',
+            titleColor: '#ff9800', // 工具提示标题也改为橙色
             bodyColor: '#ffffff',
             callbacks: {
                 label: function(context) {
