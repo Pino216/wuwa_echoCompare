@@ -5,38 +5,293 @@
     <title>鸣潮伤害分析与声骸词条对比工具 1.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --primary: #58a6ff; --accent: #ff7b72; --text: #c9d1d9; --buff: #d29922; --success: #238636; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; font-size: 13px; margin: 0; }
-        .container { max-width: 1500px; margin: 0 auto; }
-        .grid { display: grid; grid-template-columns: 350px 1fr 450px; gap: 15px; }
-        .panel { background: var(--panel); border: 1px solid #30363d; border-radius: 10px; padding: 15px; height: fit-content; }
-        h2 { font-size: 1.1em; color: var(--primary); margin: 0 0 10px 0; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
-        h3 { font-size: 0.9em; margin: 10px 0; color: var(--buff); }
-        .input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        input, select { background: #21262d; border: 1px solid #30363d; color: #fff; padding: 4px; border-radius: 4px; }
+        :root { 
+            --bg-light: #f0f4ff; 
+            --bg-gradient-start: #e3f2fd; 
+            --bg-gradient-end: #fce4ec; 
+            --panel: rgba(255, 255, 255, 0.85); 
+            --primary: #4a6bff; 
+            --accent: #ff6b8b; 
+            --text: #333344; 
+            --buff: #ff9800; 
+            --success: #4caf50; 
+            --border: rgba(74, 107, 255, 0.2);
+            --shadow: rgba(74, 107, 255, 0.1);
+        }
+        
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, 'Microsoft YaHei', sans-serif; 
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end), #e8f5e9);
+            color: var(--text); 
+            padding: 20px; 
+            font-size: 14px; 
+            margin: 0;
+            min-height: 100vh;
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .container { 
+            max-width: 1500px; 
+            margin: 0 auto; 
+            position: relative;
+            z-index: 1;
+        }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: 350px 1fr 450px; 
+            gap: 20px; 
+        }
+        
+        .panel { 
+            background: var(--panel); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 20px; 
+            height: fit-content;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(74, 107, 255, 0.2);
+        }
+        
+        h2 { 
+            font-size: 1.2em; 
+            color: var(--primary); 
+            margin: 0 0 15px 0; 
+            border-bottom: 2px solid rgba(74, 107, 255, 0.3); 
+            padding-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        h3 { 
+            font-size: 0.95em; 
+            margin: 15px 0 10px 0; 
+            color: var(--buff); 
+            font-weight: 600;
+        }
+        
+        .input-row { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 12px; 
+        }
+        
+        input, select { 
+            background: rgba(255, 255, 255, 0.9); 
+            border: 1px solid rgba(74, 107, 255, 0.3); 
+            color: #333; 
+            padding: 8px 10px; 
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 107, 255, 0.2);
+            transform: scale(1.02);
+        }
 
         /* 声骸对比样式 */
-        .echo-box { background: #0d1117; border: 1px solid #444; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-        .substat-row { display: grid; grid-template-columns: 120px 100px; gap: 10px; margin-bottom: 5px; align-items: center; }
+        .echo-box { 
+            background: rgba(255, 255, 255, 0.7); 
+            border: 1px solid rgba(74, 107, 255, 0.3); 
+            border-radius: 12px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            backdrop-filter: blur(5px);
+        }
+        
+        .substat-row { 
+            display: grid; 
+            grid-template-columns: 120px 100px; 
+            gap: 10px; 
+            margin-bottom: 8px; 
+            align-items: center; 
+        }
 
-        .action-card { background: #21262d; border: 1px solid #30363d; padding: 8px; margin-bottom: 8px; border-radius: 8px; position: relative; }
-        .chip { background: #30363d; padding: 2px 6px; border-radius: 10px; font-size: 10px; cursor: pointer; margin: 3px; display: inline-block; }
-        .chip.active { background: #1f6feb; color: #fff; }
-        .tag-type { background: var(--buff); color: #000; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+        .action-card { 
+            background: rgba(255, 255, 255, 0.9); 
+            border: 1px solid rgba(74, 107, 255, 0.3); 
+            padding: 12px; 
+            margin-bottom: 12px; 
+            border-radius: 12px; 
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(74, 107, 255, 0.15);
+            border-color: var(--primary);
+        }
+        
+        .chip { 
+            background: rgba(74, 107, 255, 0.1); 
+            padding: 4px 10px; 
+            border-radius: 12px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            margin: 4px; 
+            display: inline-block;
+            border: 1px solid rgba(74, 107, 255, 0.2);
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .chip:hover {
+            background: rgba(74, 107, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .chip.active { 
+            background: var(--primary); 
+            color: #fff;
+            box-shadow: 0 0 12px rgba(74, 107, 255, 0.4);
+        }
+        
+        .tag-type { 
+            background: var(--buff); 
+            color: #fff; 
+            padding: 2px 8px; 
+            border-radius: 6px; 
+            font-size: 10px; 
+            font-weight: bold;
+            margin-left: 8px;
+        }
 
-        .btn { cursor: pointer; font-weight: bold; border-radius: 6px; border: none; padding: 6px 12px; transition: 0.2s; }
-        .btn-calc { background: var(--primary); color: #fff; width: 100%; font-size: 1.1em; margin-top: 10px; }
-        .diff-pos { color: #3fb950; font-weight: bold; }
-        .diff-neg { color: #f85149; font-weight: bold; }
+        .btn { 
+            cursor: pointer; 
+            font-weight: 600; 
+            border-radius: 10px; 
+            border: none; 
+            padding: 8px 16px; 
+            transition: all 0.3s ease;
+            font-size: 13px;
+            background: linear-gradient(135deg, var(--primary), #6a8bff);
+            color: white;
+            box-shadow: 0 4px 12px rgba(74, 107, 255, 0.3);
+        }
+        
+        .btn:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(74, 107, 255, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-calc { 
+            background: linear-gradient(135deg, var(--primary), #6a8bff); 
+            color: #fff; 
+            width: 100%; 
+            font-size: 1.1em; 
+            margin-top: 15px; 
+            padding: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .diff-pos { 
+            color: #2e7d32; 
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(46, 125, 50, 0.2);
+        }
+        
+        .diff-neg { 
+            color: #d32f2f; 
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(211, 47, 47, 0.2);
+        }
+        
+        /* 顶部按钮样式 */
+        .top-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        /* 图表容器 */
+        #dmgChart {
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .container {
+                padding: 10px;
+            }
+        }
+        
+        /* 装饰性元素 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(255, 107, 139, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(74, 107, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 152, 0, 0.1) 0%, transparent 50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(74, 107, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(74, 107, 255, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(74, 107, 255, 0.7);
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div style="margin-bottom: 10px; display: flex; gap: 10px;">
-        <button class="btn" style="background:#30363d; color:#fff;" onclick="exportFullData()">导出方案</button>
-        <button class="btn" style="background:#30363d; color:#fff;" onclick="document.getElementById('csvImport').click()">导入方案</button>
+    <div class="top-buttons">
+        <button class="btn" onclick="exportFullData()" style="background:linear-gradient(135deg, #4a6bff, #6a8bff);">
+            📤 导出方案
+        </button>
+        <button class="btn" onclick="document.getElementById('csvImport').click()" style="background:linear-gradient(135deg, #ff6b8b, #ff8ba3);">
+            📥 导入方案
+        </button>
         <input type="file" id="csvImport" style="display:none" onchange="importFullData(this)">
+        <button class="btn" onclick="location.reload()" style="background:linear-gradient(135deg, #ff9800, #ffb74d); margin-left:auto;">
+            🔄 重置页面
+        </button>
     </div>
 
     <div class="grid">
@@ -66,23 +321,33 @@
         <div class="panel">
             <h2>2. 动作序列</h2>
             <div id="action_sequence" style="max-height: 450px; overflow-y: auto;"></div>
-            <div style="background: #0d1117; padding: 10px; border-radius: 8px; margin-top:10px;">
-                <div class="input-row">
-                    <input type="text" id="act_name" placeholder="名称" style="width:70px">
-                    <input type="number" id="act_mult" placeholder="倍率%" style="width:60px">
-                    <select id="act_type" style="width:60px">
+            <div style="background: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 12px; margin-top:15px; border: 1px solid rgba(74, 107, 255, 0.3);">
+                <h3 style="margin-top:0; margin-bottom:10px; color:var(--primary);">添加新动作</h3>
+                <div class="input-row" style="flex-wrap:wrap; gap:8px;">
+                    <input type="text" id="act_name" placeholder="动作名称" style="width:100px; flex:1;">
+                    <input type="number" id="act_mult" placeholder="倍率 %" style="width:80px; flex:1;">
+                    <select id="act_type" style="width:90px; flex:1;">
                         <option value="basic">普攻</option><option value="heavy">重击</option>
                         <option value="skill">技能</option><option value="ult">解放</option><option value="echo">声骸</option>
                     </select>
-                    <select id="act_scaling">
+                    <select id="act_scaling" style="width:90px; flex:1;">
                     <option value="atk">攻击力</option>
                     <option value="hp">生命值</option>
                     <option value="def">防御力</option></select>
-                    <button class="btn" style="background:var(--primary); color:#fff;" onclick="addAction()">+ 插入</button>
+                    <button class="btn" style="background:linear-gradient(135deg, var(--primary), #6a8bff); color:#fff; flex:1; min-width:100px;" onclick="addAction()">
+                        ✚ 插入动作
+                    </button>
+                </div>
+                <div style="font-size:11px; color:#666; margin-top:8px;">
+                    💡 提示：输入动作名称、倍率百分比并选择类型和基数
                 </div>
             </div>
-            <button class="btn btn-calc" onclick="calculate()">执行全量化分析</button>
-            <div style="height: 250px; margin-top:15px;"><canvas id="dmgChart"></canvas></div>
+            <button class="btn btn-calc" onclick="calculate()">
+                ⚡ 执行全量化分析
+            </button>
+            <div style="height: 280px; margin-top:20px; background:rgba(255,255,255,0.7); border-radius:12px; padding:15px; border:1px solid rgba(74,107,255,0.2);">
+                <canvas id="dmgChart"></canvas>
+            </div>
         </div>
 
         <div class="panel">
@@ -122,6 +387,30 @@
         "hp_flat": { name: "固定生命", type: "other", isPct: false, values: [580, 540, 510, 470, 430, 390, 360, 320] },
         "def_pct": { name: "百分比防御", type: "other", isPct: true, values: [14.7, 13.8, 12.8, 11.8, 10.9, 10.0, 9.0, 8.1] },
         "def_flat": { name: "固定防御", type: "other", isPct: false, values: [70, 60, 50, 40] }
+    };
+        
+    // 添加页面加载时的视觉增强
+    window.onload = () => {
+        initEchoSelects('echo_a');
+        initEchoSelects('echo_b');
+        sequence = [{ name: "技能演示", mult: 2.5, type: "skill", activeBuffs: [] }];
+        renderSequence();
+        calculate();
+            
+        // 添加输入框动画效果
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('focus', function() {
+                this.style.transform = 'scale(1.02)';
+            });
+            el.addEventListener('blur', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+            
+        // 添加欢迎提示
+        setTimeout(() => {
+            console.log('🎮 鸣潮伤害分析工具已就绪！');
+        }, 500);
     };
 
     let sequence = [];
