@@ -459,7 +459,7 @@
     function addNewBuff() {
         const fixedId = 'b_' + Date.now();
         const html = `
-            <div class="buff-config" data-id="${fixedId}" style="border-left:4px solid var(--primary); background:#0d1117; padding:8px; margin-bottom:5px;">
+            <div class="buff-config" data-id="${fixedId}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
                 <div class="input-row">
                     <input type="text" class="b-name" value="新Buff" style="width:80px" oninput="syncBuffNames('${fixedId}', this.value)">
                     <select class="b-cat" onchange="calculate()">
@@ -479,7 +479,7 @@
                         <option value="ult">解放</option><option value="heavy">重击</option>
                     </select>
                     <input type="number" class="b-val" value="10" style="width:40px" oninput="calculate()">%
-                    <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
+                    <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                 </div>
             </div>`;
         document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
