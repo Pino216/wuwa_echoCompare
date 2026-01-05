@@ -109,8 +109,8 @@
 
         /* 声骸对比样式 */
         .echo-box { 
-            background: rgba(255, 255, 255, 0.7); 
-            border: 1px solid rgba(74, 107, 255, 0.3); 
+            background: rgba(210, 180, 140, 0.15); 
+            border: 1px solid rgba(139, 69, 19, 0.3); 
             border-radius: 12px; 
             padding: 15px; 
             margin-bottom: 15px; 
@@ -142,27 +142,27 @@
         }
         
         .chip { 
-            background: rgba(74, 107, 255, 0.1); 
+            background: rgba(139, 69, 19, 0.1); 
             padding: 4px 10px; 
             border-radius: 12px; 
             font-size: 11px; 
             cursor: pointer; 
             margin: 4px; 
             display: inline-block;
-            border: 1px solid rgba(74, 107, 255, 0.2);
-            color: var(--primary);
+            border: 1px solid rgba(139, 69, 19, 0.2);
+            color: #8B4513;
             transition: all 0.3s ease;
         }
         
         .chip:hover {
-            background: rgba(74, 107, 255, 0.2);
+            background: rgba(139, 69, 19, 0.2);
             transform: scale(1.05);
         }
         
         .chip.active { 
-            background: var(--primary); 
+            background: #8B4513; 
             color: #fff;
-            box-shadow: 0 0 12px rgba(74, 107, 255, 0.4);
+            box-shadow: 0 0 12px rgba(139, 69, 19, 0.4);
         }
         
         .tag-type { 
@@ -183,14 +183,14 @@
             padding: 8px 16px; 
             transition: all 0.3s ease;
             font-size: 13px;
-            background: linear-gradient(135deg, var(--primary), #6a8bff);
+            background: linear-gradient(135deg, #8B4513, #A0522D);
             color: white;
-            box-shadow: 0 4px 12px rgba(74, 107, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
         }
         
         .btn:hover { 
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(74, 107, 255, 0.4);
+            box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4);
         }
         
         .btn:active {
@@ -198,7 +198,7 @@
         }
         
         .btn-calc { 
-            background: linear-gradient(135deg, var(--primary), #6a8bff); 
+            background: linear-gradient(135deg, #8B4513, #A0522D); 
             color: #fff; 
             width: 100%; 
             font-size: 1.1em; 
@@ -307,10 +307,10 @@
                 <div><input type="number" id="base_cr" value="60" style="width:40px">% / <input type="number" id="base_cd" value="200" style="width:40px">%</div>
             </div>
 
-            <div style="margin-top:10px; border-top: 1px solid #333; padding-top:10px;">
+            <div style="margin-top:10px; border-top: 1px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <h3>面板固定伤害加成</h3>
                 <div id="static_bonus_list"></div>
-                <button class="btn" style="width:100%; font-size:11px; background:#238636; color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
+                <button class="btn" style="width:100%; font-size:11px; background:linear-gradient(135deg, #8B4513, #A0522D); color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
             </div>
 
             <h3>动态 Buff 轨道</h3>
@@ -321,8 +321,8 @@
         <div class="panel">
             <h2>2. 动作序列</h2>
             <div id="action_sequence" style="max-height: 450px; overflow-y: auto;"></div>
-            <div style="background: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 12px; margin-top:15px; border: 1px solid rgba(74, 107, 255, 0.3);">
-                <h3 style="margin-top:0; margin-bottom:10px; color:var(--primary);">添加新动作</h3>
+            <div style="background: rgba(210, 180, 140, 0.15); padding: 15px; border-radius: 12px; margin-top:15px; border: 1px solid rgba(139, 69, 19, 0.3);">
+                <h3 style="margin-top:0; margin-bottom:10px; color:#8B4513;">添加新动作</h3>
                 <div class="input-row" style="flex-wrap:wrap; gap:8px;">
                     <input type="text" id="act_name" placeholder="动作名称" style="width:100px; flex:1;">
                     <input type="number" id="act_mult" placeholder="倍率 %" style="width:80px; flex:1;">
@@ -334,18 +334,18 @@
                     <option value="atk">攻击力</option>
                     <option value="hp">生命值</option>
                     <option value="def">防御力</option></select>
-                    <button class="btn" style="background:linear-gradient(135deg, var(--primary), #6a8bff); color:#fff; flex:1; min-width:100px;" onclick="addAction()">
+                    <button class="btn" style="background:linear-gradient(135deg, #8B4513, #A0522D); color:#fff; flex:1; min-width:100px;" onclick="addAction()">
                         ✚ 插入动作
                     </button>
                 </div>
-                <div style="font-size:11px; color:#666; margin-top:8px;">
+                <div style="font-size:11px; color:#8B4513; margin-top:8px;">
                     💡 提示：输入动作名称、倍率百分比并选择类型和基数
                 </div>
             </div>
             <button class="btn btn-calc" onclick="calculate()">
                 ⚡ 执行全量化分析
             </button>
-            <div style="height: 280px; margin-top:20px; background:rgba(255,255,255,0.7); border-radius:12px; padding:15px; border:1px solid rgba(74,107,255,0.2);">
+            <div style="height: 280px; margin-top:20px; background:rgba(210, 180, 140, 0.15); border-radius:12px; padding:15px; border:1px solid rgba(139, 69, 19, 0.3);">
                 <canvas id="dmgChart"></canvas>
             </div>
         </div>
@@ -355,16 +355,16 @@
             <p style="font-size:11px; color:#8b949e;">设置两个声骸的词条，对比其对最终输出的影响</p>
 
             <div class="echo-box" id="echo_a">
-                <h3 style="margin-top:0; color:var(--primary)">声骸 A</h3>
+                <h3 style="margin-top:0; color:#8B4513">声骸 A</h3>
                 <div class="substat-container"></div>
             </div>
 
             <div class="echo-box" id="echo_b">
-                <h3 style="margin-top:0; color:var(--accent)">声骸 B</h3>
+                <h3 style="margin-top:0; color:#A0522D">声骸 B</h3>
                 <div class="substat-container"></div>
             </div>
 
-            <div id="compare_res" style="background:#161b22; padding:10px; border-radius:8px; border:1px solid #3fb950;">
+            <div id="compare_res" style="background:rgba(210, 180, 140, 0.2); padding:15px; border-radius:12px; border:2px solid rgba(139, 69, 19, 0.4);">
                 等待计算...
             </div>
         </div>
