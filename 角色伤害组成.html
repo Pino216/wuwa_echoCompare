@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>鸣潮伤害分析与副词条对比工具 1.3</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --primary: #58a6ff; --accent: #ff7b72; --text: #c9d1d9; --buff: #d29922; --success: #238636; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; font-size: 13px; margin: 0; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: 380px 1fr 350px; gap: 15px; }
+        .panel { background: var(--panel); border: 1px solid #30363d; border-radius: 10px; padding: 15px; height: fit-content; }
+        h2 { font-size: 1.1em; color: var(--primary); margin: 0 0 10px 0; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+        h3 { font-size: 0.9em; margin: 10px 0; color: var(--buff); }
+        .input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        input, select { background: #21262d; border: 1px solid #30363d; color: #fff; padding: 5px; border-radius: 4px; }
+
+        /* 列表样式 */
+        .static-bonus-item { background: #1c2128; padding: 5px 8px; border-radius: 5px; margin-bottom: 5px; border: 1px solid #30363d; font-size: 11px; }
+        .action-card { background: #21262d; border: 1px solid #30363d; padding: 10px; margin-bottom: 8px; border-radius: 8px; position: relative; }
+        .chip { background: #30363d; padding: 3px 8px; border-radius: 10px; font-size: 11px; cursor: pointer; margin: 4px 4px 0 0; display: inline-block; }
+        .chip.active { background: #1f6feb; color: #fff; }
+        .tag-type { background: var(--buff); color: #000; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+
+        .compare-box { margin-top: 10px; padding: 10px; background: #0d1117; border: 1px solid #444; border-radius: 6px; }
+        .diff-pos { color: #3fb950; font-weight: bold; }
+        .diff-neg { color: #f85149; font-weight: bold; }
+
+        .btn { cursor: pointer; font-weight: bold; border-radius: 6px; border: none; padding: 6px 12px; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn-calc { background: var(--primary); color: #fff; width: 100%; font-size: 1.1em; margin-top: 10px; padding: 10px; }
+        .btn-small { padding: 2px 6px; font-size: 10px; }
+
+        #chart-container { width: 100%; height: 250px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+        <button class="btn" style="background:#30363d; color:#fff;" onclick="exportFullData()">导出方案</button>
+        <button class="btn" style="background:#30363d; color:#fff;" onclick="document.getElementById('csvImport').click()">导入方案</button>
+        <input type="file" id="csvImport" style="display:none" onchange="importFullData(this)">
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>1. 核心属性 (面板)</h2>
+            <div class="input-row"><label>基础攻击(角色+武器)</label><input type="number" id="base_atk" value="1000" style="width:80px"></div>
+            <div class="input-row"><label>当前面板总攻击</label><input type="number" id="total_atk_now" value="2500" style="width:80px"></div>
+            <div class="input-row"><label>面板双暴%</label>
+                <div><input type="number" id="base_cr" value="60" style="width:45px">% / <input type="number" id="base_cd" value="200" style="width:45px">%</div>
+            </div>
+
+            <div style="margin-top:15px; border-top: 1px solid #30363d; padding-top:10px;">
+                <h3 style="display:flex; justify-content:space-between; align-items:center;">
+                    面板固定伤害加成
+                    <button class="btn btn-small" style="background:var(--success); color:#fff;" onclick="addStaticBonus()">+ 添加</button>
+                </h3>
+                <div id="static_bonus_list">
+                    <div class="static-bonus-item">
+                        <select class="s-type" style="width:80px">
+                            <option value="all">全属性</option>
+                            <option value="basic">普攻</option>
+                            <option value="heavy">重击</option>
+                            <option value="skill">技能</option>
+                            <option value="ult">解放</option>
+                        </select>
+                        <input type="number" class="s-val" value="30" style="width:40px">%
+                        <button onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent); cursor:pointer;">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:20px;">动态 Buff 轨道 (战斗中触发)</h3>
+            <div id="buff_pool">
+                <div class="buff-config" style="border-left:4px solid var(--accent); background:#0d1117; padding:8px; margin-bottom:5px;">
+                    <div class="input-row">
+                        <input type="text" class="b-name" value="维里奈延奏" style="width:80px">
+                        <select class="b-cat"><option value="deepen">伤害加深</option><option value="bonus">伤害加成</option></select>
+                    </div>
+                    <div class="input-row">
+                        <select class="b-type">
+                            <option value="all">全伤害</option>
+                            <option value="basic">普攻</option>
+                            <option value="skill">技能</option>
+                        </select>
+                        <input type="number" class="b-val" value="15" style="width:40px">%
+                    </div>
+                </div>
+            </div>
+            <button class="btn" style="width:100%; background:#238636; color:#fff; margin-top:5px;" onclick="addNewBuff()">+ 新增 Buff 轨道</button>
+        </div>
+
+        <div class="panel">
+            <h2>2. 动作序列 (计算占比基础)</h2>
+            <div id="action_sequence" style="min-height: 200px; max-height: 500px; overflow-y: auto;"></div>
+
+            <div style="background: #0d1117; padding: 12px; border-radius: 8px; border: 1px solid #333; margin-top: 10px;">
+                <div class="input-row" style="justify-content:flex-start; gap:8px;">
+                    <input type="text" id="act_name" placeholder="动作名" style="width:90px">
+                    <input type="number" id="act_mult" placeholder="倍率%" style="width:60px">
+                    <select id="act_type">
+                        <option value="basic">普攻</option>
+                        <option value="heavy">重击</option>
+                        <option value="skill">技能</option>
+                        <option value="ult">解放</option>
+                        <option value="echo">声骸</option>
+                    </select>
+                    <button class="btn" style="background:var(--primary); color:#fff;" onclick="addAction()">+ 插入</button>
+                </div>
+            </div>
+            <button class="btn btn-calc" onclick="calculate()">执行全量化分析</button>
+        </div>
+
+        <div class="panel">
+            <h2>3. 收益对比与占比</h2>
+            <div id="chart-container">
+                <canvas id="dmgChart"></canvas>
+            </div>
+            <div class="compare-box">
+                <h3 style="margin-top:0">声骸词条对比 (对比方案 A vs B)</h3>
+                <div class="input-row">
+                    <span>方案 A: </span>
+                    <select id="sub_a" onchange="calculate()">
+                        <option value="atk_86">攻击力 8.6%</option>
+                        <option value="skill_94">技能加成 9.4%</option>
+                        <option value="cr_81">暴击率 8.1%</option>
+                        <option value="cd_162">暴击伤害 16.2%</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <span>方案 B: </span>
+                    <select id="sub_b" onchange="calculate()">
+                        <option value="skill_94" selected>技能加成 9.4%</option>
+                        <option value="atk_86">攻击力 8.6%</option>
+                        <option value="ult_94">解放加成 9.4%</option>
+                        <option value="cd_162">暴击伤害 16.2%</option>
+                    </select>
+                </div>
+                <div id="compare_res" style="margin-top:10px; padding-top:10px; border-top:1px dashed #444;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let sequence = [];
+    let buffPool = [];
+    let dmgChart = null;
+
+    const SUBSTAT_DB = {
+        atk_86: { name: "攻击力 8.6%", type: "atk_pct", val: 0.086 },
+        skill_94: { name: "技能加成 9.4%", type: "skill", val: 0.094 },
+        ult_94: { name: "解放加成 9.4%", type: "ult", val: 0.094 },
+        basic_94: { name: "普攻加成 9.4%", type: "basic", val: 0.094 },
+        heavy_94: { name: "重击加成 9.4%", type: "heavy", val: 0.094 },
+        cr_81: { name: "暴击率 8.1%", type: "cr", val: 0.081 },
+        cd_162: { name: "暴击伤害 16.2%", type: "cd", val: 0.162 }
+    };
+
+    function addStaticBonus() {
+        const html = `
+            <div class="static-bonus-item">
+                <select class="s-type" style="width:80px">
+                    <option value="all">全属性</option>
+                    <option value="basic">普攻</option><option value="heavy">重击</option>
+                    <option value="skill">技能</option><option value="ult">解放</option>
+                </select>
+                <input type="number" class="s-val" value="30" style="width:40px">%
+                <button onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent); cursor:pointer;">×</button>
+            </div>`;
+        document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
+    }
+
+    function addNewBuff() {
+        const html = `
+            <div class="buff-config" style="border-left:4px solid var(--primary); background:#0d1117; padding:8px; margin-bottom:5px;">
+                <div class="input-row">
+                    <input type="text" class="b-name" value="新Buff" style="width:80px">
+                    <select class="b-cat"><option value="bonus">伤害加成</option><option value="deepen">伤害加深</option><option value="atk_pct">攻击%</option></select>
+                </div>
+                <div class="input-row">
+                    <select class="b-type">
+                        <option value="all">全通用</option>
+                        <option value="basic">普攻</option><option value="skill">技能</option>
+                        <option value="ult">解放</option><option value="heavy">重击</option>
+                    </select>
+                    <input type="number" class="b-val" value="10" style="width:40px">%
+                    <button onclick="this.parentElement.parentElement.remove();render();" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
+                </div>
+            </div>`;
+        document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
+        render();
+    }
+
+    function addAction() {
+        const name = document.getElementById('act_name').value || "动作";
+        const mult = parseFloat(document.getElementById('act_mult').value) / 100 || 0;
+        const type = document.getElementById('act_type').value;
+        sequence.push({ name, mult, type, activeBuffs: [] });
+        render();
+    }
+
+    function render() {
+        buffPool = [];
+        document.querySelectorAll('.buff-config').forEach((el, idx) => {
+            const id = 'b' + idx;
+            el.dataset.id = id;
+            buffPool.push({
+                id: id,
+                name: el.querySelector('.b-name').value,
+                cat: el.querySelector('.b-cat').value,
+                type: el.querySelector('.b-type').value,
+                val: parseFloat(el.querySelector('.b-val').value) / 100
+            });
+        });
+
+        const container = document.getElementById('action_sequence');
+        container.innerHTML = sequence.map((a, i) => `
+            <div class="action-card">
+                <strong>${a.name}</strong> <span class="tag-type">${a.type}</span>
+                <span style="color:#8b949e; margin-left:10px;">${(a.mult*100).toFixed(1)}%</span>
+                <div style="margin-top:6px;">
+                    ${buffPool.map(b => `
+                        <div class="chip ${a.activeBuffs.includes(b.id) ? 'active' : ''}"
+                             onclick="toggleBuff(${i}, '${b.id}')">${b.name}</div>
+                    `).join('')}
+                </div>
+                <span style="position:absolute; right:10px; top:10px; cursor:pointer; color:var(--accent)" onclick="sequence.splice(${i},1);render()">×</span>
+            </div>
+        `).join('');
+    }
+
+    function toggleBuff(actIdx, buffId) {
+        const idx = sequence[actIdx].activeBuffs.indexOf(buffId);
+        if(idx > -1) sequence[actIdx].activeBuffs.splice(idx, 1);
+        else sequence[actIdx].activeBuffs.push(buffId);
+        render();
+    }
+
+    function runSim(extraSub = null) {
+        const baseAtk = parseFloat(document.getElementById('base_atk').value);
+        const totalAtkNow = parseFloat(document.getElementById('total_atk_now').value);
+        let cr = parseFloat(document.getElementById('base_cr').value)/100;
+        let cd = parseFloat(document.getElementById('base_cd').value)/100;
+
+        // 获取面板固定加成
+        let staticBonusBase = { all: 0, basic: 0, heavy: 0, skill: 0, ult: 0, echo: 0 };
+        document.querySelectorAll('.static-bonus-item').forEach(item => {
+            const type = item.querySelector('.s-type').value;
+            const val = parseFloat(item.querySelector('.s-val').value) / 100;
+            staticBonusBase[type] += val;
+        });
+
+        let exAtkPct = 0;
+        let exBonusMap = {};
+        if(extraSub) {
+            if(extraSub.type === 'atk_pct') exAtkPct = extraSub.val;
+            else if(extraSub.type === 'cr') cr += extraSub.val;
+            else if(extraSub.type === 'cd') cd += extraSub.val;
+            else exBonusMap[extraSub.type] = extraSub.val;
+        }
+
+        const critExp = 1 + Math.min(1, cr) * (cd - 1);
+        let typeDmg = { basic: 0, heavy: 0, skill: 0, ult: 0, echo: 0 };
+        let totalDmg = 0;
+
+        sequence.forEach(a => {
+            // 基础倍率区 = 1 + 面板固定全伤害 + 面板固定特定伤害 + 额外对比词条
+            let currentBonus = 1 + staticBonusBase.all + (staticBonusBase[a.type] || 0) + (exBonusMap[a.type] || 0);
+            let currentDeepen = 1;
+            let currentAtkPct = exAtkPct;
+
+            a.activeBuffs.forEach(bid => {
+                const b = buffPool.find(x => x.id === bid);
+                if(b && (b.type === 'all' || b.type === a.type)) {
+                    if(b.cat === 'bonus') currentBonus += b.val;
+                    else if(b.cat === 'deepen') currentDeepen += b.val;
+                    else if(b.cat === 'atk_pct') currentAtkPct += b.val;
+                }
+            });
+
+            const finalAtk = totalAtkNow + (baseAtk * currentAtkPct);
+            const dmg = finalAtk * a.mult * currentBonus * currentDeepen * critExp;
+            typeDmg[a.type] += dmg;
+            totalDmg += dmg;
+        });
+
+        return { totalDmg, typeDmg };
+    }
+
+    function calculate() {
+        render();
+        const baseResult = runSim(null);
+        updateChart(baseResult.typeDmg);
+
+        const subA = SUBSTAT_DB[document.getElementById('sub_a').value];
+        const subB = SUBSTAT_DB[document.getElementById('sub_b').value];
+        const resA = runSim(subA);
+        const resB = runSim(subB);
+
+        const gainA = ((resA.totalDmg / baseResult.totalDmg - 1) * 100).toFixed(2);
+        const gainB = ((resB.totalDmg / baseResult.totalDmg - 1) * 100).toFixed(2);
+        const diff = (gainA - gainB).toFixed(2);
+
+        document.getElementById('compare_res').innerHTML = `
+            <div>方案 A [${subA.name}] 提升: <span class="diff-pos">+${gainA}%</span></div>
+            <div>方案 B [${subB.name}] 提升: <span class="diff-pos">+${gainB}%</span></div>
+            <div style="margin-top:8px; font-weight:bold;">结论:
+                ${diff > 0 ? `方案 A 比 B 强 <span class="diff-pos">${diff}%</span>` : `方案 B 比 A 强 <span class="diff-neg">${Math.abs(diff)}%</span>`}
+            </div>
+        `;
+    }
+
+    function updateChart(typeDmg) {
+        const ctx = document.getElementById('dmgChart').getContext('2d');
+        const labels = ['普攻', '重击', '技能', '解放', '声骸'];
+        const data = [typeDmg.basic, typeDmg.heavy, typeDmg.skill, typeDmg.ult, typeDmg.echo];
+        if (dmgChart) dmgChart.destroy();
+        dmgChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#58a6ff', '#ff7b72', '#d29922', '#bc8cff', '#30363d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { color: '#c9d1d9', font: { size: 10 } } } }
+            }
+        });
+    }
+
+    function exportFullData() {
+        // 导出逻辑也增加了面板加成捕获
+        const staticBonuses = [];
+        document.querySelectorAll('.static-bonus-item').forEach(item => {
+            staticBonuses.push({ type: item.querySelector('.s-type').value, val: item.querySelector('.s-val').value });
+        });
+        const config = {
+            base_atk: document.getElementById('base_atk').value,
+            total_atk_now: document.getElementById('total_atk_now').value,
+            base_cr: document.getElementById('base_cr').value,
+            base_cd: document.getElementById('base_cd').value,
+            static_bonuses: staticBonuses,
+            buffs: buffPool,
+            sequence: sequence
+        };
+        const blob = new Blob(["\ufeff" + JSON.stringify(config)], { type: 'application/json' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `鸣潮分析_${new Date().getTime()}.json`;
+        link.click();
+    }
+
+    function importFullData(input) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = JSON.parse(e.target.result);
+            document.getElementById('base_atk').value = data.base_atk;
+            document.getElementById('total_atk_now').value = data.total_atk_now;
+            document.getElementById('base_cr').value = data.base_cr;
+            document.getElementById('base_cd').value = data.base_cd;
+
+            if(data.static_bonuses) {
+                const list = document.getElementById('static_bonus_list');
+                list.innerHTML = '';
+                data.static_bonuses.forEach(b => {
+                    const html = `<div class="static-bonus-item">
+                        <select class="s-type" style="width:80px">
+                            <option value="all" ${b.type==='all'?'selected':''}>全属性</option>
+                            <option value="basic" ${b.type==='basic'?'selected':''}>普攻</option>
+                            <option value="heavy" ${b.type==='heavy'?'selected':''}>重击</option>
+                            <option value="skill" ${b.type==='skill'?'selected':''}>技能</option>
+                            <option value="ult" ${b.type==='ult'?'selected':''}>解放</option>
+                        </select>
+                        <input type="number" class="s-val" value="${b.val}" style="width:40px">%
+                        <button onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent); cursor:pointer;">×</button>
+                    </div>`;
+                    list.insertAdjacentHTML('beforeend', html);
+                });
+            }
+            sequence = data.sequence;
+            render();
+            calculate();
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    window.onload = () => {
+        sequence = [
+            { name: "常态普攻1", mult: 0.5, type: "basic", activeBuffs: [] },
+            { name: "共鸣技能", mult: 2.1, type: "skill", activeBuffs: [] },
+            { name: "共鸣解放", mult: 4.5, type: "ult", activeBuffs: [] }
+        ];
+        render();
+        calculate();
+    };
+</script>
+</body>
+</html>
