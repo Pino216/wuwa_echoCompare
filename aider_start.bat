@@ -28,6 +28,18 @@ echo API Key 前10位: %DEEPSEEK_API_KEY:~0,10%...
 :: 调试：显示完整的API key长度
 echo API Key 长度: !DEEPSEEK_API_KEY:~0,1!...!DEEPSEEK_API_KEY:~-4!
 
+:: 显示API key完整长度信息
+set "KEY_LEN=0"
+if defined DEEPSEEK_API_KEY (
+    set "TEMP_KEY=!DEEPSEEK_API_KEY!"
+    :loop
+    if not "!TEMP_KEY:~%KEY_LEN%,1!"=="" (
+        set /a KEY_LEN+=1
+        goto loop
+    )
+)
+echo API Key 实际长度: %KEY_LEN% 字符
+
 :: 设置aider的环境变量，确保正确处理特殊字符
 set "AIDER_API_BASE=%DEEPSEEK_API_BASE%"
 set "AIDER_API_KEY=%DEEPSEEK_API_KEY%"
@@ -50,7 +62,8 @@ echo.
 :: 调试：显示将要传递的参数
 echo 调试信息:
 echo API BASE: "%AIDER_API_BASE%"
-echo API KEY: "%AIDER_API_KEY:~0,10%..."
+echo API KEY 前10位: "%AIDER_API_KEY:~0,10%..."
+echo API KEY 完整长度: %KEY_LEN% 字符
 
 :: 启动aider，使用DeepSeek作为模型
 :: 使用引号包裹参数，确保特殊字符被正确处理
@@ -58,8 +71,13 @@ aider --api-base "%AIDER_API_BASE%" --api-key "%AIDER_API_KEY%" --model deepseek
 
 :: 如果上面的命令失败，尝试另一种方式
 if errorlevel 1 (
+    echo.
     echo 尝试使用环境变量启动 aider...
     echo 注意: 使用环境变量 AIDER_API_BASE 和 AIDER_API_KEY
+    echo 当前环境变量值:
+    echo AIDER_API_BASE: !AIDER_API_BASE!
+    echo AIDER_API_KEY 前10位: !AIDER_API_KEY:~0,10!...
+    echo.
     aider
 )
 
