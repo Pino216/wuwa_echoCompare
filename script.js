@@ -210,13 +210,31 @@ function addAction() {
         updateBuffPool();
         const container = document.getElementById('action_sequence');
         container.innerHTML = sequence.map((a, i) => {
-            // 查找对应的伤害类型名称
-            const damageType = DAMAGE_TYPES.find(t => t.id === a.type);
-            const typeName = damageType ? damageType.name : a.type;
+            // 生成伤害类型选项
+            const typeOptions = DAMAGE_TYPES.map(t => 
+                `<option value="${t.id}" ${t.id === a.type ? 'selected' : ''}>${t.name}</option>`
+            ).join('');
+            
             return `
-            <div class="action-card">
-                <strong>${a.name}</strong> <span class="tag-type">${typeName}</span>
-                <span>${(a.mult*100).toFixed(1)}% (${a.scaling === 'hp' ? '生命' : a.scaling === 'def' ? '防御' : '攻击'})</span>
+            <div class="action-card" data-index="${i}">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <input type="text" class="action-name" value="${a.name}" style="width: 100px; flex: 1;" 
+                           onchange="updateActionName(${i}, this.value)">
+                    <input type="number" class="action-mult" value="${(a.mult*100).toFixed(1)}" style="width: 60px;" 
+                           onchange="updateActionMult(${i}, this.value)" step="0.1">%
+                    <select class="action-type" style="width: 100px;" 
+                            onchange="updateActionType(${i}, this.value)">
+                        ${typeOptions}
+                    </select>
+                    <select class="action-scaling" style="width: 80px;" 
+                            onchange="updateActionScaling(${i}, this.value)">
+                        <option value="atk" ${a.scaling === 'atk' ? 'selected' : ''}>攻击力</option>
+                        <option value="hp" ${a.scaling === 'hp' ? 'selected' : ''}>生命值</option>
+                        <option value="def" ${a.scaling === 'def' ? 'selected' : ''}>防御力</option>
+                    </select>
+                    <span style="position:absolute; right:10px; top:10px; cursor:pointer; color:var(--accent)" 
+                          onclick="sequence.splice(${i},1);renderSequence();calculate();">×</span>
+                </div>
                 <div style="margin-top:6px;">
                     ${buffPool.map(b => `
                         <div class="chip ${a.activeBuffs.includes(b.id) ? 'active' : ''}"
@@ -225,9 +243,36 @@ function addAction() {
                         </div>
                     `).join('')}
                 </div>
-                <span style="position:absolute; right:10px; top:10px; cursor:pointer; color:var(--accent)" onclick="sequence.splice(${i},1);renderSequence();calculate();">×</span>
             </div>
         `}).join('');
+    }
+
+    function updateActionName(index, newName) {
+        if (index >= 0 && index < sequence.length) {
+            sequence[index].name = newName;
+            calculate();
+        }
+    }
+
+    function updateActionMult(index, newMult) {
+        if (index >= 0 && index < sequence.length) {
+            sequence[index].mult = parseFloat(newMult) / 100;
+            calculate();
+        }
+    }
+
+    function updateActionType(index, newType) {
+        if (index >= 0 && index < sequence.length) {
+            sequence[index].type = newType;
+            calculate();
+        }
+    }
+
+    function updateActionScaling(index, newScaling) {
+        if (index >= 0 && index < sequence.length) {
+            sequence[index].scaling = newScaling;
+            calculate();
+        }
     }
 
     function toggleBuff(actIdx, buffId) {
@@ -254,9 +299,19 @@ function runSim(extraSubs = []) {
     const panelCd = parseFloat(document.getElementById('base_cd').value) / 100 || 0;
 
     // 2. 固定加成 (来自静态列表)
-    let staticBonusMap = { basic:0, heavy:0, skill:0, ult:0, echo:0, all:0 };
+    // 初始化staticBonusMap，包含所有DAMAGE_TYPES
+    let staticBonusMap = { all:0 };
+    DAMAGE_TYPES.forEach(t => {
+        staticBonusMap[t.id] = 0;
+    });
     document.querySelectorAll('.static-bonus-item').forEach(el => {
-        staticBonusMap[el.querySelector('.s-type').value] += parseFloat(el.querySelector('.s-val').value)/100;
+        const type = el.querySelector('.s-type').value;
+        const value = parseFloat(el.querySelector('.s-val').value)/100;
+        if (staticBonusMap.hasOwnProperty(type)) {
+            staticBonusMap[type] += value;
+        } else {
+            staticBonusMap[type] = value;
+        }
     });
 
     // 3. 处理副词条加成 (需增加生命和防御属性识别)
@@ -271,7 +326,14 @@ function runSim(extraSubs = []) {
         else if(subBonus[d.type] !== undefined) subBonus[d.type] += v;
     });
 
-    let typeDmg = { basic:0, heavy:0, skill:0, ult:0, echo:0 };
+    // 动态初始化typeDmg，包含所有DAMAGE_TYPES中除了'all'的类型
+    let typeDmg = {};
+    // 初始化typeDmg
+    DAMAGE_TYPES.forEach(t => {
+        if (t.id !== 'all') {
+            typeDmg[t.id] = 0;
+        }
+    });
     let totalDmg = 0;
 
     // 4. 遍历动作序列计算
