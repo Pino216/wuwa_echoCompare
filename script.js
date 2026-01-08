@@ -16,10 +16,76 @@
         "def_flat": { name: "固定防御", type: "other", isPct: false, values: [70, 60, 50, 40] }
     };
 
+    // 统一的伤害类型配置
+    let DAMAGE_TYPES = [
+        { id: 'all', name: '通用' },
+        { id: 'basic', name: '普攻' },
+        { id: 'heavy', name: '重击' },
+        { id: 'skill', name: '共鸣技能' },
+        { id: 'ult', name: '共鸣解放' },
+        { id: 'echo', name: '声骸技能' }
+    ];
+
+    // 自定义伤害类型管理
+    function addCustomDamageType() {
+        const customId = 'custom_' + Date.now();
+        const customName = prompt('请输入自定义伤害类型名称：', '自定义类型');
+        if (customName && customName.trim()) {
+            DAMAGE_TYPES.push({ id: customId, name: customName.trim() });
+            updateAllDamageTypeSelects();
+            alert('已添加自定义伤害类型：' + customName.trim());
+        }
+    }
+
+    function removeCustomDamageType(typeId) {
+        if (typeId.startsWith('custom_')) {
+            DAMAGE_TYPES = DAMAGE_TYPES.filter(t => t.id !== typeId);
+            updateAllDamageTypeSelects();
+            alert('已删除自定义伤害类型');
+        } else {
+            alert('系统默认类型不能删除');
+        }
+    }
+
+    function updateAllDamageTypeSelects() {
+        // 更新静态加成选择器
+        document.querySelectorAll('.s-type').forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = DAMAGE_TYPES.map(t => 
+                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+            ).join('');
+        });
+        
+        // 更新动态Buff选择器
+        document.querySelectorAll('.b-type').forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = DAMAGE_TYPES.map(t => 
+                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+            ).join('');
+        });
+        
+        // 更新动作类型选择器
+        const actTypeSelect = document.getElementById('act_type');
+        if (actTypeSelect) {
+            const currentValue = actTypeSelect.value;
+            actTypeSelect.innerHTML = DAMAGE_TYPES.map(t => 
+                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+            ).join('');
+        }
+        
+        // 重新渲染序列
+        renderSequence();
+        calculate();
+    }
+
     // 添加页面加载时的视觉增强
     window.onload = () => {
         initEchoSelects('echo_a');
         initEchoSelects('echo_b');
+        
+        // 初始化伤害类型选择器
+        updateAllDamageTypeSelects();
+        
         sequence = [{ 
             name: "技能演示", 
             mult: 2.5, 
@@ -73,6 +139,7 @@
     // --- Buff 核心逻辑 ---
     function addNewBuff() {
         const fixedId = 'b_' + Date.now();
+        const typeOptions = DAMAGE_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         const html = `
             <div class="buff-config" data-id="${fixedId}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
                 <div class="input-row">
@@ -88,11 +155,7 @@
                     </select>
                 </div>
                 <div class="input-row">
-                    <select class="b-type" onchange="calculate()">
-                        <option value="all">全通用</option>
-                        <option value="basic">普攻</option><option value="skill">技能</option>
-                        <option value="ult">解放</option><option value="heavy">重击</option>
-                    </select>
+                    <select class="b-type" onchange="calculate()">${typeOptions}</select>
                     <input type="number" class="b-val" value="10" style="width:40px" oninput="calculate()">%
                     <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                 </div>
@@ -351,8 +414,9 @@ options: {
 }
 
     function addStaticBonus() {
+        const options = DAMAGE_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         const html = `<div class="static-bonus-item input-row">
-            <select class="s-type" onchange="calculate()"><option value="all">全属性</option><option value="basic">普攻</option><option value="heavy">重击</option><option value="skill">技能</option><option value="ult">解放</option></select>
+            <select class="s-type" onchange="calculate()">${options}</select>
             <input type="number" class="s-val" value="30" style="width:40px" oninput="calculate()">%
             <button onclick="this.parentElement.remove(); calculate();" style="color:var(--accent); background:none; border:none;">×</button>
         </div>`;

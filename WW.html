@@ -37,8 +37,11 @@
 
             <div style="margin-top:10px; border-top: 1px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <h3>面板固定伤害加成</h3>
+                <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #4a6bff, #6a8bff); color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
+                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #ff9800, #ffb74d); color:#fff;" onclick="addCustomDamageType()">+ 自定义伤害类型</button>
+                </div>
                 <div id="static_bonus_list"></div>
-                <button class="btn" style="width:100%; font-size:11px; background:linear-gradient(135deg, #8B4513, #A0522D); color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
             </div>
 
             <h3>动态 Buff 轨道</h3>
@@ -55,8 +58,7 @@
                     <input type="text" id="act_name" placeholder="动作名称" style="width:100px; flex:1;">
                     <input type="number" id="act_mult" placeholder="倍率 %" style="width:80px; flex:1;">
                     <select id="act_type" style="width:90px; flex:1;">
-                        <option value="basic">普攻</option><option value="heavy">重击</option>
-                        <option value="skill">技能</option><option value="ult">解放</option><option value="echo">声骸</option>
+                        <!-- 选项将通过JavaScript动态生成 -->
                     </select>
                     <select id="act_scaling" style="width:90px; flex:1;">
                     <option value="atk">攻击力</option>
