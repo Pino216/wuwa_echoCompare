@@ -209,9 +209,13 @@ function addAction() {
     function renderSequence() {
         updateBuffPool();
         const container = document.getElementById('action_sequence');
-        container.innerHTML = sequence.map((a, i) => `
+        container.innerHTML = sequence.map((a, i) => {
+            // 查找对应的伤害类型名称
+            const damageType = DAMAGE_TYPES.find(t => t.id === a.type);
+            const typeName = damageType ? damageType.name : a.type;
+            return `
             <div class="action-card">
-                <strong>${a.name}</strong> <span class="tag-type">${a.type}</span>
+                <strong>${a.name}</strong> <span class="tag-type">${typeName}</span>
                 <span>${(a.mult*100).toFixed(1)}% (${a.scaling === 'hp' ? '生命' : a.scaling === 'def' ? '防御' : '攻击'})</span>
                 <div style="margin-top:6px;">
                     ${buffPool.map(b => `
@@ -223,7 +227,7 @@ function addAction() {
                 </div>
                 <span style="position:absolute; right:10px; top:10px; cursor:pointer; color:var(--accent)" onclick="sequence.splice(${i},1);renderSequence();calculate();">×</span>
             </div>
-        `).join('');
+        `}).join('');
     }
 
     function toggleBuff(actIdx, buffId) {
@@ -354,8 +358,12 @@ function updateChart(typeDmg) {
 
     // 计算总伤害，用于计算百分比
     const total = Object.values(typeDmg).reduce((a, b) => a + b, 0);
-    const labels = ['普攻', '重击', '技能', '解放', '声骸'];
-    const dataValues = [typeDmg.basic, typeDmg.heavy, typeDmg.skill, typeDmg.ult, typeDmg.echo];
+    
+    // 创建标签和数据值的映射
+    // 我们需要按照DAMAGE_TYPES的顺序来组织，但排除'all'类型
+    const damageTypesForChart = DAMAGE_TYPES.filter(t => t.id !== 'all');
+    const labels = damageTypesForChart.map(t => t.name);
+    const dataValues = damageTypesForChart.map(t => typeDmg[t.id] || 0);
 
     dmgChart = new Chart(ctx, {
         type: 'doughnut',
