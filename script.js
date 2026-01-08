@@ -9,6 +9,7 @@
         "heavy": { name: "重击加成", type: "heavy", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "skill": { name: "技能加成", type: "skill", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "ult": { name: "解放加成", type: "ult", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
+        "echo": { name: "声骸技能加成", type: "echo", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "eff": { name: "共鸣效率", type: "other", isPct: true, values: [12.4, 11.6, 10.8, 10.0, 9.2, 8.4, 7.6, 6.8] },
         "hp_pct": { name: "百分比生命", type: "other", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "hp_flat": { name: "固定生命", type: "other", isPct: false, values: [580, 540, 510, 470, 430, 390, 360, 320] },
@@ -45,6 +46,21 @@
         } else {
             alert('系统默认类型不能删除');
         }
+    }
+
+    function showCustomTypes() {
+        const customTypes = DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'));
+        if (customTypes.length === 0) {
+            alert('暂无自定义伤害类型');
+            return;
+        }
+        
+        let message = '当前自定义伤害类型：\n\n';
+        customTypes.forEach(t => {
+            message += `• ${t.name} (ID: ${t.id})\n`;
+        });
+        message += '\n要删除某个类型，请复制其ID并在控制台中执行：removeCustomDamageType("ID")';
+        alert(message);
     }
 
     function updateAllDamageTypeSelects() {
@@ -250,6 +266,7 @@ function addAction() {
     function updateActionName(index, newName) {
         if (index >= 0 && index < sequence.length) {
             sequence[index].name = newName;
+            renderSequence();
             calculate();
         }
     }
@@ -257,6 +274,7 @@ function addAction() {
     function updateActionMult(index, newMult) {
         if (index >= 0 && index < sequence.length) {
             sequence[index].mult = parseFloat(newMult) / 100;
+            renderSequence();
             calculate();
         }
     }
@@ -264,6 +282,7 @@ function addAction() {
     function updateActionType(index, newType) {
         if (index >= 0 && index < sequence.length) {
             sequence[index].type = newType;
+            renderSequence();
             calculate();
         }
     }
@@ -271,6 +290,7 @@ function addAction() {
     function updateActionScaling(index, newScaling) {
         if (index >= 0 && index < sequence.length) {
             sequence[index].scaling = newScaling;
+            renderSequence();
             calculate();
         }
     }
@@ -316,7 +336,13 @@ function runSim(extraSubs = []) {
 
     // 3. 处理副词条加成 (需增加生命和防御属性识别)
     let subValues = { atk_pct: 0, hp_pct: 0, def_pct: 0, cr: 0, cd: 0 };
-    let subBonus = { basic:0, heavy:0, skill:0, ult:0, echo:0 };
+    // 初始化subBonus，包含所有DAMAGE_TYPES中除了'all'的类型
+    let subBonus = {};
+    DAMAGE_TYPES.forEach(t => {
+        if (t.id !== 'all') {
+            subBonus[t.id] = 0;
+        }
+    });
 
     extraSubs.forEach(s => {
         const d = SUBSTAT_DATA[s.key];
@@ -427,13 +453,22 @@ function updateChart(typeDmg) {
     const labels = damageTypesForChart.map(t => t.name);
     const dataValues = damageTypesForChart.map(t => typeDmg[t.id] || 0);
 
+    // 生成足够的颜色
+    const colorPalette = [
+        '#58a6ff', '#ff7b72', '#d29922', '#bc8cff', '#30363d',
+        '#8b949e', '#7ee787', '#ffa657', '#79c0ff', '#d2a8ff',
+        '#ff7b72', '#56d364', '#f0b72f', '#6e7681', '#ffa198'
+    ];
+    
+    const backgroundColor = labels.map((_, i) => colorPalette[i % colorPalette.length]);
+
     dmgChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels,
             datasets: [{
                 data: dataValues,
-                backgroundColor: ['#58a6ff', '#ff7b72', '#d29922', '#bc8cff', '#30363d'],
+                backgroundColor: backgroundColor,
                 borderWidth: 0
             }]
         },

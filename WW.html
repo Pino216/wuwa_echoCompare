@@ -37,9 +37,10 @@
 
             <div style="margin-top:10px; border-top: 1px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <h3>面板固定伤害加成</h3>
-                <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #4a6bff, #6a8bff); color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
                     <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #ff9800, #ffb74d); color:#fff;" onclick="addCustomDamageType()">+ 自定义伤害类型</button>
+                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #ff6b8b, #ff8ba3); color:#fff;" onclick="showCustomTypes()">管理自定义类型</button>
                 </div>
                 <div id="static_bonus_list"></div>
             </div>
