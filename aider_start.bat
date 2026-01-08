@@ -7,9 +7,9 @@ echo        Aider 启动脚本
 echo ========================================
 
 :: 检查环境变量
-if "%DEEPSEEK_API_URL%"=="" (
-    echo 错误: 未找到 DEEPSEEK_API_URL 环境变量
-    echo 请先设置 DEEPSEEK_API_URL 环境变量
+if "%DEEPSEEK_API_BASE%"=="" (
+    echo 错误: 未找到 DEEPSEEK_API_BASE 环境变量
+    echo 请先设置 DEEPSEEK_API_BASE 环境变量
     pause
     exit /b 1
 )
@@ -22,11 +22,11 @@ if "%DEEPSEEK_API_KEY%"=="" (
 )
 
 echo 正在使用 DeepSeek API...
-echo API URL: %DEEPSEEK_API_URL%
+echo API BASE: %DEEPSEEK_API_BASE%
 echo API Key: %DEEPSEEK_API_KEY:~0,10%...
 
 :: 设置aider的环境变量
-set AIDER_API_BASE=%DEEPSEEK_API_URL%
+set AIDER_API_BASE=%DEEPSEEK_API_BASE%
 set AIDER_API_KEY=%DEEPSEEK_API_KEY%
 
 :: 检查aider是否已安装
