@@ -20,7 +20,13 @@
     window.onload = () => {
         initEchoSelects('echo_a');
         initEchoSelects('echo_b');
-        sequence = [{ name: "技能演示", mult: 2.5, type: "skill", activeBuffs: [] }];
+        sequence = [{ 
+            name: "技能演示", 
+            mult: 2.5, 
+            type: "skill", 
+            scaling: "atk",
+            activeBuffs: [] 
+        }];
         renderSequence();
         calculate();
 
@@ -43,15 +49,6 @@
     let sequence = [];
     let buffPool = [];
     let dmgChart = null;
-
-    // --- 初始化函数 ---
-    window.onload = () => {
-        initEchoSelects('echo_a');
-        initEchoSelects('echo_b');
-        sequence = [{ name: "技能演示", mult: 2.5, type: "skill", activeBuffs: [] }];
-        renderSequence();
-        calculate();
-    };
 
     function initEchoSelects(id) {
         const container = document.querySelector(`#${id} .substat-container`);
