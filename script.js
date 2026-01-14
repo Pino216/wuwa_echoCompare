@@ -398,7 +398,7 @@ function runSim(extraSubs = []) {
         let curBonus = 1 + staticBonusMap.all + staticBonusMap[a.type] + (subBonus[a.type] || 0);
         let curDeepen = 1;
 
-        // 获取固定值加成
+        // 获取固定值加成，并转换为基于基础属性的百分比
         let curFlatValue = 0;
         if (a.scaling === 'atk') {
             curFlatValue = subFlatValues.atk_flat;
@@ -406,6 +406,12 @@ function runSim(extraSubs = []) {
             curFlatValue = subFlatValues.hp_flat;
         } else if (a.scaling === 'def') {
             curFlatValue = subFlatValues.def_flat;
+        }
+        
+        // 将固定值转换为百分比加成（相对于基础属性）
+        let curFlatPct = 0;
+        if (baseStat > 0) {
+            curFlatPct = curFlatValue / baseStat;
         }
 
         // 5. 应用动态 Buff
@@ -420,8 +426,8 @@ function runSim(extraSubs = []) {
             }
         });
 
-        // 最终属性计算：当前面板 + (基础属性 * 额外百分比加成) + 固定值加成
-        const finalScalingValue = currentTotalStat + (baseStat * curAttrPct) + curFlatValue;
+        // 最终属性计算：当前面板 + 基础属性 * (额外百分比加成 + 固定值转换的百分比)
+        const finalScalingValue = currentTotalStat + (baseStat * (curAttrPct + curFlatPct));
         const critExp = 1 + Math.min(1, curCr) * (curCd - 1);
 
         // 核心伤害公式
@@ -822,15 +828,41 @@ function getColorForType(typeId) {
     // 获取完整的声骸词条详情（包括百分比和固定值）
     function getEchoSubDetailsFull(subs) {
         const details = {};
+        // 获取基础属性值，用于将固定值转换为百分比
+        const baseAtk = parseFloat(document.getElementById('base_atk').value) || 0;
+        const baseHp = parseFloat(document.getElementById('base_hp')?.value) || 0;
+        const baseDef = parseFloat(document.getElementById('base_def')?.value) || 0;
+        
         subs.forEach(sub => {
             const data = SUBSTAT_DATA[sub.key];
             if (data) {
                 const type = data.type;
+                let value = sub.val;
+                let isPct = data.isPct;
+                
+                // 如果是固定值，转换为百分比格式
+                if (!data.isPct) {
+                    if (type === 'atk_flat' && baseAtk > 0) {
+                        value = (sub.val / baseAtk) * 100;
+                        isPct = true;
+                    } else if (type === 'hp_flat' && baseHp > 0) {
+                        value = (sub.val / baseHp) * 100;
+                        isPct = true;
+                    } else if (type === 'def_flat' && baseDef > 0) {
+                        value = (sub.val / baseDef) * 100;
+                        isPct = true;
+                    }
+                }
+                
                 // 存储值和是否为百分比
-                details[type] = {
-                    value: (details[type]?.value || 0) + sub.val,
-                    isPct: data.isPct
-                };
+                if (details[type]) {
+                    details[type].value += value;
+                } else {
+                    details[type] = {
+                        value: value,
+                        isPct: isPct
+                    };
+                }
             }
         });
         return details;
