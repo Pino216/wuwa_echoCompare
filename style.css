@@ -214,6 +214,50 @@
             text-shadow: 0 0 8px rgba(211, 47, 47, 0.2);
         }
 
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background: rgba(139, 69, 19, 0.1);
+            color: #8B4513;
+            font-weight: 600;
+            text-align: left;
+            padding: 10px;
+            border-bottom: 2px solid rgba(139, 69, 19, 0.3);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(139, 69, 19, 0.1);
+        }
+
+        tr:hover {
+            background: rgba(139, 69, 19, 0.05) !important;
+        }
+
+        /* 滚动条样式 */
+        #damageComposition::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #damageComposition::-webkit-scrollbar-track {
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 3px;
+        }
+
+        #damageComposition::-webkit-scrollbar-thumb {
+            background: rgba(139, 69, 19, 0.3);
+            border-radius: 3px;
+        }
+
+        #damageComposition::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 69, 19, 0.5);
+        }
+
         /* 顶部按钮样式 */
         .top-buttons {
             display: flex;

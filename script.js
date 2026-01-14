@@ -411,6 +411,111 @@ function runSim(extraSubs = []) {
     return { totalDmg, typeDmg };
 }
 
+// --- 伤害组成表格显示 ---
+function updateDamageComposition(typeDmg) {
+    const container = document.getElementById('damageComposition');
+    if (!container) return;
+    
+    // 计算总伤害
+    const total = Object.values(typeDmg).reduce((a, b) => a + b, 0);
+    
+    // 过滤掉伤害为0的类型
+    const damageTypesForTable = DAMAGE_TYPES.filter(t => t.id !== 'all' && (typeDmg[t.id] || 0) > 0);
+    
+    // 按伤害值降序排序
+    damageTypesForTable.sort((a, b) => (typeDmg[b.id] || 0) - (typeDmg[a.id] || 0));
+    
+    if (damageTypesForTable.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
+        return;
+    }
+    
+    // 创建表格HTML
+    let html = `
+        <div style="margin-top:20px; border-top:1px solid rgba(139, 69, 19, 0.3); padding-top:15px;">
+            <h3 style="margin-top:0; color:#8B4513; font-size:1em;">伤害组成详情</h3>
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:rgba(139, 69, 19, 0.1);">
+                            <th style="padding:8px; text-align:left; border-bottom:2px solid rgba(139, 69, 19, 0.3);">伤害类型</th>
+                            <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">伤害值</th>
+                            <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">占比</th>
+                            <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">累计占比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    let cumulativePercentage = 0;
+    damageTypesForTable.forEach((type, index) => {
+        const damage = typeDmg[type.id] || 0;
+        const percentage = total > 0 ? (damage / total * 100) : 0;
+        cumulativePercentage += percentage;
+        
+        // 交替行背景色
+        const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(210, 180, 140, 0.1)';
+        
+        html += `
+            <tr style="background:${rowBg};">
+                <td style="padding:8px; border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:${getColorForType(type.id)};"></span>
+                    ${type.name}
+                </td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.1); font-weight:bold;">
+                    ${damage.toFixed(0)}
+                </td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                    ${percentage.toFixed(2)}%
+                </td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                    ${cumulativePercentage.toFixed(2)}%
+                </td>
+            </tr>
+        `;
+    });
+    
+    // 总计行
+    html += `
+                        <tr style="background:rgba(139, 69, 19, 0.2); font-weight:bold;">
+                            <td style="padding:10px; border-top:2px solid rgba(139, 69, 19, 0.3);">总计</td>
+                            <td style="padding:10px; text-align:right; border-top:2px solid rgba(139, 69, 19, 0.3); color:#8B4513;">
+                                ${total.toFixed(0)}
+                            </td>
+                            <td style="padding:10px; text-align:right; border-top:2px solid rgba(139, 69, 19, 0.3);">100.00%</td>
+                            <td style="padding:10px; text-align:right; border-top:2px solid rgba(139, 69, 19, 0.3);">100.00%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// 获取伤害类型对应的颜色
+function getColorForType(typeId) {
+    const colorMap = {
+        'basic': '#58a6ff',
+        'heavy': '#ff7b72',
+        'skill': '#d29922',
+        'ult': '#bc8cff',
+        'echo': '#30363d',
+        'all': '#8b949e'
+    };
+    
+    // 为自定义类型生成稳定颜色
+    if (typeId.startsWith('custom_')) {
+        const hash = typeId.split('_')[1] || '0';
+        const colors = ['#7ee787', '#ffa657', '#79c0ff', '#d2a8ff', '#ff7b72', '#56d364', '#f0b72f', '#6e7681', '#ffa198'];
+        const index = parseInt(hash) % colors.length;
+        return colors[index];
+    }
+    
+    return colorMap[typeId] || '#8b949e';
+}
+
     function calculate() {
         const getEchoSubs = (id) => {
             const subs = [];
@@ -425,6 +530,7 @@ function runSim(extraSubs = []) {
         const resB = runSim(getEchoSubs('echo_b'));
 
         updateChart(resBase.typeDmg);
+        updateDamageComposition(resBase.typeDmg); // 新增：更新伤害组成表格
 
         const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
         const gainB = (resB.totalDmg / resBase.totalDmg - 1) * 100;
