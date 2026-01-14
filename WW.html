@@ -98,11 +98,20 @@
             <p style="font-size:11px; color:#8b949e;">设置两个声骸的词条，对比其对最终输出的影响</p>
 
             <div class="echo-box" id="echo_a">
-                <h3 style="margin-top:0; color:#8B4513">声骸 A</h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <h3 style="margin-top:0; color:#8B4513">声骸 A</h3>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <input type="checkbox" id="echo_a_equipped" checked style="width: 16px; height: 16px;">
+                        <label for="echo_a_equipped" style="font-size: 11px; color:#8B4513; cursor: pointer;">已装备</label>
+                    </div>
+                </div>
                 <div style="font-size:11px; color:#8B4513; margin-bottom:8px;">
                     副词条类型：普攻/重击/共鸣技能/共鸣解放/暴击/暴伤/攻击%/生命%/防御%等
                 </div>
                 <div class="substat-container"></div>
+                <div style="font-size:10px; color:#8B4513; margin-top:8px; padding:6px; background:rgba(139, 69, 19, 0.1); border-radius:4px;">
+                    ✓ 默认已装备在角色身上，对比时计算替换为声骸B的伤害变化
+                </div>
             </div>
 
             <div class="echo-box" id="echo_b">

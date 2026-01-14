@@ -121,6 +121,12 @@
             });
         });
 
+        // 为声骸A装备复选框添加事件监听
+        const echoACheckbox = document.getElementById('echo_a_equipped');
+        if (echoACheckbox) {
+            echoACheckbox.addEventListener('change', calculate);
+        }
+
         // 添加欢迎提示
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
@@ -525,22 +531,54 @@ function getColorForType(typeId) {
             return subs;
         };
 
-        const resBase = runSim([]);
-        const resA = runSim(getEchoSubs('echo_a'));
-        const resB = runSim(getEchoSubs('echo_b'));
+        // 检查是否已装备声骸A
+        const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
+        
+        let resBase, resB;
+        
+        if (isEchoAEquipped) {
+            // 声骸A已装备：基础伤害包含声骸A的词条
+            resBase = runSim(getEchoSubs('echo_a'));
+            // 替换为声骸B后的伤害
+            resB = runSim(getEchoSubs('echo_b'));
+        } else {
+            // 声骸A未装备：基础伤害不包含任何声骸词条
+            resBase = runSim([]);
+            // 分别计算声骸A和B的提升
+            const resA = runSim(getEchoSubs('echo_a'));
+            const resBWithA = runSim(getEchoSubs('echo_b'));
+            
+            const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
+            const gainB = (resBWithA.totalDmg / resBase.totalDmg - 1) * 100;
+            const diff = gainA - gainB;
+            
+            updateChart(resBase.typeDmg);
+            updateDamageComposition(resBase.typeDmg);
+            
+            document.getElementById('compare_res').innerHTML = `
+                <div style="margin-bottom:5px;">声骸 A 提升: <span class="diff-pos">+${gainA.toFixed(2)}%</span></div>
+                <div style="margin-bottom:8px;">声骸 B 提升: <span class="diff-pos">+${gainB.toFixed(2)}%</span></div>
+                <div style="border-top:1px dashed #555; padding-top:8px; font-weight:bold; font-size:1.1em;">
+                    结论: ${diff > 0 ? `声骸 A 强 <span class="diff-pos">${diff.toFixed(2)}%</span>` : `声骸 B 强 <span class="diff-neg">${Math.abs(diff).toFixed(2)}%</span>`}
+                </div>
+            `;
+            return;
+        }
 
         updateChart(resBase.typeDmg);
-        updateDamageComposition(resBase.typeDmg); // 新增：更新伤害组成表格
+        updateDamageComposition(resBase.typeDmg);
 
-        const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
+        // 计算声骸B相对于声骸A的提升
         const gainB = (resB.totalDmg / resBase.totalDmg - 1) * 100;
-        const diff = gainA - gainB;
 
         document.getElementById('compare_res').innerHTML = `
-            <div style="margin-bottom:5px;">声骸 A 提升: <span class="diff-pos">+${gainA.toFixed(2)}%</span></div>
-            <div style="margin-bottom:8px;">声骸 B 提升: <span class="diff-pos">+${gainB.toFixed(2)}%</span></div>
+            <div style="margin-bottom:5px;">当前装备: <span style="color:#8B4513; font-weight:bold;">声骸 A</span></div>
+            <div style="margin-bottom:8px;">替换为声骸 B 后: <span class="${gainB >= 0 ? 'diff-pos' : 'diff-neg'}">${gainB >= 0 ? '+' : ''}${gainB.toFixed(2)}%</span></div>
             <div style="border-top:1px dashed #555; padding-top:8px; font-weight:bold; font-size:1.1em;">
-                结论: ${diff > 0 ? `声骸 A 强 <span class="diff-pos">${diff.toFixed(2)}%</span>` : `声骸 B 强 <span class="diff-neg">${Math.abs(diff).toFixed(2)}%</span>`}
+                结论: ${gainB > 0 ? `声骸 B 更强 <span class="diff-pos">${gainB.toFixed(2)}%</span>` : `声骸 A 更强 <span class="diff-neg">${Math.abs(gainB).toFixed(2)}%</span>`}
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:#8b949e; background:rgba(139, 69, 19, 0.1); padding:8px; border-radius:6px;">
+                💡 假设声骸A已装备在角色身上，计算替换为声骸B后的伤害变化
             </div>
         `;
     }
