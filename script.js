@@ -134,17 +134,24 @@
         // 尝试自动加载上次保存的配置
         const hasLoaded = autoLoadLastConfig();
         
-        // 如果没有任何配置，使用默认配置
-        if (!hasLoaded || sequence.length === 0) {
-            sequence = [{ 
-                name: "技能演示", 
-                mult: 2.5, 
-                type: "skill", 
-                scaling: "atk",
-                activeBuffs: [] 
-            }];
-            renderSequence();
-            calculate();
+        // 只有在没有加载到配置时才使用默认配置
+        if (!hasLoaded) {
+            // 检查sequence是否为空（可能是加载失败或没有保存的配置）
+            if (sequence.length === 0) {
+                sequence = [{ 
+                    name: "技能演示", 
+                    mult: 2.5, 
+                    type: "skill", 
+                    scaling: "atk",
+                    activeBuffs: [] 
+                }];
+                renderSequence();
+                // 页面初始化时不显示验证警告
+                calculate(false);
+            }
+        } else {
+            // 如果加载成功，确保计算一次以更新界面，但不显示验证警告
+            calculate(false);
         }
 
         // 添加输入框动画效果
@@ -160,7 +167,9 @@
         // 为声骸A装备复选框添加事件监听
         const echoACheckbox = document.getElementById('echo_a_equipped');
         if (echoACheckbox) {
-            echoACheckbox.addEventListener('change', calculate);
+            echoACheckbox.addEventListener('change', function() {
+                calculate(false);
+            });
         }
 
         // 为所有现有的声骸数值选择器添加事件监听器
@@ -225,7 +234,7 @@
             let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
             for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
             nameSelect += `</select>`;
-            row.innerHTML = nameSelect + `<select class="sub-val" onchange="calculate()"><option value="0">0</option></select>`;
+            row.innerHTML = nameSelect + `<select class="sub-val" onchange="calculate(false)"><option value="0">0</option></select>`;
             container.appendChild(row);
         }
     }
@@ -235,8 +244,8 @@
         const data = SUBSTAT_DATA[selectEl.value];
         valSelect.innerHTML = data.values.map(v => `<option value="${v}">${v}${data.isPct?'%':''}</option>`).join('');
         // 添加onchange事件到新创建的选项
-        valSelect.setAttribute('onchange', 'calculate()');
-        calculate();
+        valSelect.setAttribute('onchange', 'calculate(false)');
+        calculate(false);
     }
 
     // --- Buff 核心逻辑 ---
@@ -628,42 +637,52 @@ function getColorForType(typeId) {
 }
 
     // 数据验证函数
-    function validateInputs() {
+    function validateInputs(showAlert = true) {
         // 验证基础攻击力
         const baseAtk = parseFloat(document.getElementById('base_atk').value);
         if (isNaN(baseAtk) || baseAtk <= 0) {
-            alert('❌ 基础攻击力必须为正数');
-            document.getElementById('base_atk').focus();
+            if (showAlert) {
+                alert('❌ 基础攻击力必须为正数');
+                document.getElementById('base_atk').focus();
+            }
             return false;
         }
         
         // 验证当前攻击力
         const totalAtkNow = parseFloat(document.getElementById('total_atk_now').value);
         if (isNaN(totalAtkNow) || totalAtkNow <= 0) {
-            alert('❌ 当前面板总攻击必须为正数');
-            document.getElementById('total_atk_now').focus();
+            if (showAlert) {
+                alert('❌ 当前面板总攻击必须为正数');
+                document.getElementById('total_atk_now').focus();
+            }
             return false;
         }
         
         // 验证暴击率
         const baseCr = parseFloat(document.getElementById('base_cr').value);
         if (isNaN(baseCr) || baseCr < 0 || baseCr > 100) {
-            alert('❌ 暴击率必须在0-100%之间');
-            document.getElementById('base_cr').focus();
+            if (showAlert) {
+                alert('❌ 暴击率必须在0-100%之间');
+                document.getElementById('base_cr').focus();
+            }
             return false;
         }
         
         // 验证暴击伤害
         const baseCd = parseFloat(document.getElementById('base_cd').value);
         if (isNaN(baseCd) || baseCd < 0) {
-            alert('❌ 暴击伤害必须为非负数');
-            document.getElementById('base_cd').focus();
+            if (showAlert) {
+                alert('❌ 暴击伤害必须为非负数');
+                document.getElementById('base_cd').focus();
+            }
             return false;
         }
         
         // 验证动作序列
         if (sequence.length === 0) {
-            alert('⚠️ 动作序列为空，请至少添加一个动作');
+            if (showAlert) {
+                alert('⚠️ 动作序列为空，请至少添加一个动作');
+            }
             return false;
         }
         
@@ -671,7 +690,9 @@ function getColorForType(typeId) {
         for (let i = 0; i < sequence.length; i++) {
             const action = sequence[i];
             if (isNaN(action.mult) || action.mult <= 0) {
-                alert(`❌ 动作"${action.name}"的倍率必须为正数`);
+                if (showAlert) {
+                    alert(`❌ 动作"${action.name}"的倍率必须为正数`);
+                }
                 return false;
             }
         }
@@ -679,9 +700,9 @@ function getColorForType(typeId) {
         return true;
     }
 
-    function calculate() {
-        // 执行数据验证
-        if (!validateInputs()) {
+    function calculate(showValidationAlert = true) {
+        // 执行数据验证，但可以控制是否显示警告
+        if (!validateInputs(showValidationAlert)) {
             return;
         }
         
@@ -1125,12 +1146,12 @@ options: {
     function addStaticBonus() {
         const options = DAMAGE_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         const html = `<div class="static-bonus-item input-row">
-            <select class="s-type" onchange="calculate()">${options}</select>
-            <input type="number" class="s-val" value="30" style="width:40px" oninput="calculate()">%
-            <button onclick="this.parentElement.remove(); calculate();" style="color:var(--accent); background:none; border:none;">×</button>
+            <select class="s-type" onchange="calculate(false)">${options}</select>
+            <input type="number" class="s-val" value="30" style="width:40px" oninput="calculate(false)">%
+            <button onclick="this.parentElement.remove(); calculate(false);" style="color:var(--accent); background:none; border:none;">×</button>
         </div>`;
         document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
-        calculate();
+        calculate(false);
     }
 
     // 获取声骸配置的辅助函数
