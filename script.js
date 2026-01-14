@@ -133,6 +133,11 @@
             echoACheckbox.addEventListener('change', calculate);
         }
 
+        // 为所有现有的声骸数值选择器添加事件监听器
+        document.querySelectorAll('.sub-val').forEach(select => {
+            select.addEventListener('change', calculate);
+        });
+
         // 添加键盘快捷键支持
         document.addEventListener('keydown', function(e) {
             // Ctrl+S 保存到本地
@@ -156,6 +161,7 @@
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
             console.log('📋 快捷键：Ctrl+S保存，Ctrl+L加载，Ctrl+R计算');
+            console.log('📊 声骸词条修改实时计算已启用');
         }, 500);
     };
 
@@ -171,7 +177,7 @@
             let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
             for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
             nameSelect += `</select>`;
-            row.innerHTML = nameSelect + `<select class="sub-val"><option value="0">0</option></select>`;
+            row.innerHTML = nameSelect + `<select class="sub-val" onchange="calculate()"><option value="0">0</option></select>`;
             container.appendChild(row);
         }
     }
@@ -180,6 +186,8 @@
         const valSelect = selectEl.parentElement.querySelector('.sub-val');
         const data = SUBSTAT_DATA[selectEl.value];
         valSelect.innerHTML = data.values.map(v => `<option value="${v}">${v}${data.isPct?'%':''}</option>`).join('');
+        // 添加onchange事件到新创建的选项
+        valSelect.setAttribute('onchange', 'calculate()');
         calculate();
     }
 
@@ -1108,7 +1116,7 @@ options: {
                 let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
                 for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
                 nameSelect += `</select>`;
-                row.innerHTML = nameSelect + `<select class="sub-val"><option value="0">0</option></select>`;
+                row.innerHTML = nameSelect + `<select class="sub-val" onchange="calculate()"><option value="0">0</option></select>`;
                 container.appendChild(row);
             }
         }
@@ -1132,6 +1140,8 @@ options: {
                     }
                     // 确保值被设置
                     valSelect.value = sub.val;
+                    // 确保有onchange事件
+                    valSelect.setAttribute('onchange', 'calculate()');
                 }
             }
         });
