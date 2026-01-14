@@ -627,7 +627,57 @@ options: {
         });
     }
 
-    // 导出数据（支持JSON和XLSX格式）- 现在通过下拉菜单选择
+    // 导出菜单控制
+    let exportMenuVisible = false;
+    
+    function toggleExportMenu() {
+        const menu = document.getElementById('exportMenu');
+        if (!menu) return;
+        
+        if (exportMenuVisible) {
+            menu.style.display = 'none';
+        } else {
+            // 隐藏其他可能打开的菜单
+            menu.style.display = 'block';
+            // 点击页面其他地方时关闭菜单
+            setTimeout(() => {
+                document.addEventListener('click', closeExportMenuOnClickOutside);
+            }, 10);
+        }
+        exportMenuVisible = !exportMenuVisible;
+    }
+    
+    function closeExportMenuOnClickOutside(event) {
+        const menu = document.getElementById('exportMenu');
+        const button = document.querySelector('.export-btn');
+        
+        if (menu && button && 
+            !menu.contains(event.target) && 
+            !button.contains(event.target)) {
+            menu.style.display = 'none';
+            exportMenuVisible = false;
+            document.removeEventListener('click', closeExportMenuOnClickOutside);
+        }
+    }
+    
+    function selectExportFormat(format) {
+        // 隐藏菜单
+        const menu = document.getElementById('exportMenu');
+        if (menu) {
+            menu.style.display = 'none';
+            exportMenuVisible = false;
+            document.removeEventListener('click', closeExportMenuOnClickOutside);
+        }
+        
+        // 根据选择执行导出
+        if (format === 'json') {
+            exportToJSON();
+        } else if (format === 'xlsx') {
+            exportToXLSX();
+        }
+    }
+    
+    // 导出数据（支持JSON和XLSX格式）- 现在通过点击菜单选择
     function exportFullData() {
         // 默认导出JSON格式，以保持向后兼容性
         exportToJSON();

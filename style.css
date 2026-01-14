@@ -256,6 +256,7 @@
             font-size: 13px;
             transition: all 0.3s ease;
             border-bottom: 1px solid rgba(0,0,0,0.1);
+            cursor: pointer;
         }
         
         .export-menu a:last-child {
@@ -265,13 +266,4 @@
         .export-menu a:hover {
             background-color: #f1f1f1;
             color: #4a6bff;
-        }
-        
-        .export-dropdown:hover .export-menu,
-        .export-menu:hover {
-            display: block;
-        }
-        
-        .export-dropdown:hover .export-btn {
-            background: linear-gradient(135deg, #3a5bef, #5a7bff) !important;
         }
