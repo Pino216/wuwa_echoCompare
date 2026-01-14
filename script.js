@@ -656,7 +656,7 @@ function getColorForType(typeId) {
             `;
         }
         
-        // 声骸词条对比表格
+        // 声骸词条对比表格（区分百分比和固定值）
         html += `
             <div style="margin-bottom:15px;">
                 <h4 style="margin:10px 0 5px 0; color:#8B4513; font-size:0.95em;">声骸词条对比</h4>
@@ -668,42 +668,61 @@ function getColorForType(typeId) {
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">声骸 A</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">声骸 B</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">差值</th>
+                                <th style="padding:6px; text-align:center; border-bottom:1px solid rgba(139, 69, 19, 0.3);">单位</th>
                             </tr>
                         </thead>
                         <tbody>
         `;
         
+        // 获取所有词条数据（包括百分比和固定值）
+        const echoADetailsFull = getEchoSubDetailsFull(echoASubs);
+        const echoBDetailsFull = getEchoSubDetailsFull(echoBSubs);
+        
         // 合并所有词条类型
-        const allSubTypes = new Set([...Object.keys(echoADetails), ...Object.keys(echoBDetails)]);
+        const allSubTypes = new Set([...Object.keys(echoADetailsFull), ...Object.keys(echoBDetailsFull)]);
         let hasRows = false;
         
-        allSubTypes.forEach(subType => {
-            const aVal = echoADetails[subType] || 0;
-            const bVal = echoBDetails[subType] || 0;
+        // 转换为数组并排序
+        const sortedSubTypes = Array.from(allSubTypes).sort();
+        
+        sortedSubTypes.forEach(subType => {
+            const aData = echoADetailsFull[subType] || { value: 0, isPct: true };
+            const bData = echoBDetailsFull[subType] || { value: 0, isPct: true };
+            
+            const aVal = aData.value;
+            const bVal = bData.value;
+            const isPct = aData.isPct || bData.isPct; // 优先显示百分比单位
+            
             const diffVal = bVal - aVal;
             
+            // 显示所有词条，包括A为0但B不为0的情况
             if (aVal !== 0 || bVal !== 0) {
                 hasRows = true;
                 const diffClass = diffVal > 0 ? 'diff-pos' : (diffVal < 0 ? 'diff-neg' : '');
                 const diffSign = diffVal > 0 ? '+' : '';
+                const unit = isPct ? '%' : '';
                 
                 html += `
                     <tr style="border-bottom:1px solid rgba(139, 69, 19, 0.1);">
                         <td style="padding:6px;">${getSubstatName(subType)}</td>
-                        <td style="padding:6px; text-align:right;">${aVal.toFixed(1)}%</td>
-                        <td style="padding:6px; text-align:right;">${bVal.toFixed(1)}%</td>
+                        <td style="padding:6px; text-align:right;">${aVal.toFixed(isPct ? 1 : 0)}${unit}</td>
+                        <td style="padding:6px; text-align:right;">${bVal.toFixed(isPct ? 1 : 0)}${unit}</td>
                         <td style="padding:6px; text-align:right; ${diffClass ? `class="${diffClass}"` : ''}">
-                            ${diffVal !== 0 ? `${diffSign}${diffVal.toFixed(1)}%` : '0%'}
+                            ${diffVal !== 0 ? `${diffSign}${diffVal.toFixed(isPct ? 1 : 0)}${unit}` : `0${unit}`}
+                        </td>
+                        <td style="padding:6px; text-align:center; color:#8b949e; font-size:10px;">
+                            ${isPct ? '百分比' : '固定值'}
                         </td>
                     </tr>
                 `;
             }
         });
         
+        // 如果没有词条数据，显示提示
         if (!hasRows) {
             html += `
                 <tr>
-                    <td colspan="4" style="padding:10px; text-align:center; color:#8b949e;">
+                    <td colspan="5" style="padding:10px; text-align:center; color:#8b949e;">
                         无有效词条数据
                     </td>
                 </tr>
@@ -787,7 +806,7 @@ function getColorForType(typeId) {
         return html;
     }
 
-    // 获取声骸词条详情
+    // 获取声骸词条详情（包括百分比和固定值）
     function getEchoSubDetails(subs) {
         const details = {};
         subs.forEach(sub => {
@@ -795,6 +814,23 @@ function getColorForType(typeId) {
             if (data && data.isPct) {
                 const type = data.type;
                 details[type] = (details[type] || 0) + sub.val;
+            }
+        });
+        return details;
+    }
+
+    // 获取完整的声骸词条详情（包括百分比和固定值）
+    function getEchoSubDetailsFull(subs) {
+        const details = {};
+        subs.forEach(sub => {
+            const data = SUBSTAT_DATA[sub.key];
+            if (data) {
+                const type = data.type;
+                // 存储值和是否为百分比
+                details[type] = {
+                    value: (details[type]?.value || 0) + sub.val,
+                    isPct: data.isPct
+                };
             }
         });
         return details;
