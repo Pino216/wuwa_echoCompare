@@ -627,8 +627,22 @@ options: {
         });
     }
 
-    // 完整导出功能
+    // 导出数据（支持JSON和XLSX格式）
     function exportFullData() {
+        // 询问用户选择导出格式
+        const format = prompt('请选择导出格式（输入 1 或 2）：\n1. JSON格式（推荐备份）\n2. Excel格式（.xlsx，便于查看）', '1');
+        
+        if (format === '1') {
+            exportToJSON();
+        } else if (format === '2') {
+            exportToXLSX();
+        } else {
+            alert('已取消导出');
+        }
+    }
+
+    // 导出为JSON格式
+    function exportToJSON() {
         try {
             updateBuffPool();
             
@@ -718,7 +732,141 @@ options: {
         }
     }
 
-    // 完整导入功能
+    // 导出为XLSX格式
+    function exportToXLSX() {
+        try {
+            updateBuffPool();
+            
+            // 收集所有配置数据
+            const config = {
+                meta: {
+                    version: "1.4",
+                    tool_name: "鸣潮伤害分析与声骸词条对比工具",
+                    export_time: new Date().toISOString()
+                },
+                character: {
+                    base_hp: document.getElementById('base_hp').value,
+                    total_hp_now: document.getElementById('total_hp_now').value,
+                    base_atk: document.getElementById('base_atk').value,
+                    total_atk_now: document.getElementById('total_atk_now').value,
+                    base_def: document.getElementById('base_def').value,
+                    total_def_now: document.getElementById('total_def_now').value,
+                    base_cr: document.getElementById('base_cr').value,
+                    base_cd: document.getElementById('base_cd').value
+                },
+                static_bonus: getStaticBonusConfig(),
+                buffs: buffPool,
+                sequence: sequence,
+                echoes: {
+                    echo_a: getEchoConfig('echo_a'),
+                    echo_b: getEchoConfig('echo_b')
+                },
+                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+            };
+            
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 1. 基础面板数据工作表
+            const characterData = [
+                ["属性", "基础值", "当前面板值"],
+                ["生命值", config.character.base_hp, config.character.total_hp_now],
+                ["攻击力", config.character.base_atk, config.character.total_atk_now],
+                ["防御力", config.character.base_def, config.character.total_def_now],
+                ["暴击率(%)", config.character.base_cr, ""],
+                ["暴击伤害(%)", config.character.base_cd, ""]
+            ];
+            const ws1 = XLSX.utils.aoa_to_sheet(characterData);
+            XLSX.utils.book_append_sheet(wb, ws1, "基础面板");
+            
+            // 2. 静态加成工作表
+            const staticBonusData = [
+                ["伤害类型", "加成值(%)"]
+            ];
+            config.static_bonus.forEach(item => {
+                const typeName = DAMAGE_TYPES.find(t => t.id === item.type)?.name || item.type;
+                staticBonusData.push([typeName, item.value]);
+            });
+            const ws2 = XLSX.utils.aoa_to_sheet(staticBonusData);
+            XLSX.utils.book_append_sheet(wb, ws2, "静态加成");
+            
+            // 3. 动态Buff工作表
+            const buffData = [
+                ["Buff名称", "类型", "分类", "数值(%)"]
+            ];
+            config.buffs.forEach(buff => {
+                const typeName = DAMAGE_TYPES.find(t => t.id === buff.type)?.name || buff.type;
+                buffData.push([buff.name, typeName, buff.cat, (buff.val * 100).toFixed(1)]);
+            });
+            const ws3 = XLSX.utils.aoa_to_sheet(buffData);
+            XLSX.utils.book_append_sheet(wb, ws3, "动态Buff");
+            
+            // 4. 动作序列工作表
+            const sequenceData = [
+                ["动作名称", "倍率(%)", "伤害类型", "基数", "激活Buff"]
+            ];
+            config.sequence.forEach(action => {
+                const typeName = DAMAGE_TYPES.find(t => t.id === action.type)?.name || action.type;
+                const buffNames = action.activeBuffs.map(bid => {
+                    const buff = config.buffs.find(b => b.id === bid);
+                    return buff ? buff.name : bid;
+                }).join(", ");
+                sequenceData.push([
+                    action.name, 
+                    (action.mult * 100).toFixed(1), 
+                    typeName, 
+                    action.scaling || "atk",
+                    buffNames
+                ]);
+            });
+            const ws4 = XLSX.utils.aoa_to_sheet(sequenceData);
+            XLSX.utils.book_append_sheet(wb, ws4, "动作序列");
+            
+            // 5. 声骸配置工作表
+            const echoData = [
+                ["声骸", "词条类型", "数值"]
+            ];
+            // 声骸A
+            config.echoes.echo_a.forEach(sub => {
+                const subInfo = SUBSTAT_DATA[sub.key];
+                const name = subInfo ? subInfo.name : sub.key;
+                echoData.push(["声骸A", name, sub.val]);
+            });
+            // 声骸B
+            config.echoes.echo_b.forEach(sub => {
+                const subInfo = SUBSTAT_DATA[sub.key];
+                const name = subInfo ? subInfo.name : sub.key;
+                echoData.push(["声骸B", name, sub.val]);
+            });
+            const ws5 = XLSX.utils.aoa_to_sheet(echoData);
+            XLSX.utils.book_append_sheet(wb, ws5, "声骸词条");
+            
+            // 6. 元数据工作表
+            const metaData = [
+                ["导出工具", config.meta.tool_name],
+                ["版本", config.meta.version],
+                ["导出时间", config.meta.export_time],
+                ["数据版本", "2"],
+                ["备注", "鸣潮伤害分析工具导出数据"]
+            ];
+            const ws6 = XLSX.utils.aoa_to_sheet(metaData);
+            XLSX.utils.book_append_sheet(wb, ws6, "元数据");
+            
+            // 生成并下载文件
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            XLSX.writeFile(wb, `鸣潮分析_${timestamp}.xlsx`);
+            
+            console.log('XLSX导出成功');
+            return true;
+            
+        } catch (error) {
+            console.error('XLSX导出失败:', error);
+            alert(`XLSX导出失败: ${error.message}\n请确保已加载xlsx库。`);
+            return false;
+        }
+    }
+
+    // 完整导入功能（支持JSON和XLSX格式）
     function importFullData(input) {
         if (!input.files || input.files.length === 0) {
             alert('请选择要导入的文件');
@@ -726,131 +874,215 @@ options: {
         }
         
         const file = input.files[0];
-        if (!file.name.endsWith('.json')) {
-            alert('请选择JSON格式的文件');
+        const isJSON = file.name.endsWith('.json');
+        const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+        
+        if (!isJSON && !isXLSX) {
+            alert('请选择JSON或Excel格式的文件（.json, .xlsx, .xls）');
             return;
         }
         
         const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                
-                // 验证数据格式和版本
-                if (!data.meta || !data.meta.version) {
-                    throw new Error('无效的数据格式：缺少元数据');
+        
+        if (isJSON) {
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    importFromJSON(data);
+                    alert(`JSON导入成功！\n\n版本: ${data.meta?.version || '未知'}`);
+                    input.value = '';
+                } catch (error) {
+                    console.error('JSON导入失败:', error);
+                    alert(`JSON导入失败: ${error.message}`);
+                    input.value = '';
                 }
-                
-                // 检查版本兼容性
-                const version = data.meta.version;
-                if (!version.startsWith('1.')) {
-                    if (!confirm(`数据版本 ${version} 可能不兼容当前版本 1.4。是否继续导入？`)) {
-                        return;
-                    }
+            };
+            reader.readAsText(file);
+        } else if (isXLSX) {
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    importFromXLSX(workbook);
+                    alert('Excel文件导入成功！');
+                    input.value = '';
+                } catch (error) {
+                    console.error('XLSX导入失败:', error);
+                    alert(`Excel导入失败: ${error.message}`);
+                    input.value = '';
                 }
-                
-                // 恢复基础面板数据
-                if (data.character) {
-                    document.getElementById('base_hp').value = data.character.base_hp || '';
-                    document.getElementById('total_hp_now').value = data.character.total_hp_now || '';
-                    document.getElementById('base_atk').value = data.character.base_atk || '';
-                    document.getElementById('total_atk_now').value = data.character.total_atk_now || '';
-                    document.getElementById('base_def').value = data.character.base_def || '';
-                    document.getElementById('total_def_now').value = data.character.total_def_now || '';
-                    document.getElementById('base_cr').value = data.character.base_cr || '';
-                    document.getElementById('base_cd').value = data.character.base_cd || '';
-                }
-                
-                // 恢复静态加成
-                if (data.static_bonus && Array.isArray(data.static_bonus)) {
-                    setStaticBonusConfig(data.static_bonus);
-                }
-                
-                // 恢复动态Buff池
-                if (data.buffs && Array.isArray(data.buffs)) {
-                    // 清空现有Buff池
-                    document.getElementById('buff_pool').innerHTML = '';
-                    // 添加Buff
-                    data.buffs.forEach(buff => {
-                        const typeOptions = DAMAGE_TYPES.map(t => 
-                            `<option value="${t.id}" ${t.id === buff.type ? 'selected' : ''}>${t.name}</option>`
-                        ).join('');
-                        const html = `
-                            <div class="buff-config" data-id="${buff.id}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
-                                <div class="input-row">
-                                    <input type="text" class="b-name" value="${buff.name || '新Buff'}" style="width:80px" oninput="syncBuffNames('${buff.id}', this.value)">
-                                    <select class="b-cat" onchange="calculate()">
-                                        <option value="bonus" ${buff.cat === 'bonus' ? 'selected' : ''}>伤害加成</option>
-                                        <option value="deepen" ${buff.cat === 'deepen' ? 'selected' : ''}>伤害加深</option>
-                                        <option value="atk_pct" ${buff.cat === 'atk_pct' ? 'selected' : ''}>攻击%</option>
-                                        <option value="cr" ${buff.cat === 'cr' ? 'selected' : ''}>暴击率</option>
-                                        <option value="cd" ${buff.cat === 'cd' ? 'selected' : ''}>暴击伤害</option>
-                                        <option value="hp_pct" ${buff.cat === 'hp_pct' ? 'selected' : ''}>生命%</option>
-                                        <option value="def_pct" ${buff.cat === 'def_pct' ? 'selected' : ''}>防御%</option>
-                                    </select>
-                                </div>
-                                <div class="input-row">
-                                    <select class="b-type" onchange="calculate()">${typeOptions}</select>
-                                    <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="calculate()">%
-                                    <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
-                                </div>
-                            </div>`;
-                        document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
-                    });
-                }
-                
-                // 恢复动作序列
-                if (data.sequence && Array.isArray(data.sequence)) {
-                    sequence = data.sequence;
-                }
-                
-                // 恢复声骸配置
-                if (data.echoes) {
-                    if (data.echoes.echo_a) {
-                        setEchoConfig('echo_a', data.echoes.echo_a);
-                    }
-                    if (data.echoes.echo_b) {
-                        setEchoConfig('echo_b', data.echoes.echo_b);
-                    }
-                }
-                
-                // 恢复自定义伤害类型
-                if (data.damage_types && Array.isArray(data.damage_types)) {
-                    // 移除现有的自定义类型
-                    DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
-                    // 添加导入的自定义类型
-                    data.damage_types.forEach(t => {
-                        DAMAGE_TYPES.push(t);
-                    });
-                }
-                
-                // 更新界面
-                updateBuffPool();
-                updateAllDamageTypeSelects();
-                renderSequence();
-                calculate();
-                
-                // 显示成功消息
-                const importTime = data.meta.export_time ? 
-                    new Date(data.meta.export_time).toLocaleString('zh-CN') : '未知时间';
-                alert(`导入成功！\n\n版本: ${data.meta.version}\n导出时间: ${importTime}\n\n所有配置已恢复。`);
-                
-                // 重置文件输入
-                input.value = '';
-                
-            } catch (error) {
-                console.error('导入失败:', error);
-                alert(`导入失败: ${error.message}\n\n请确保文件格式正确且来自本工具。`);
-                input.value = '';
+            };
+            reader.readAsBinaryString(file);
+        }
+    }
+
+    // 从JSON数据导入
+    function importFromJSON(data) {
+        // 验证数据格式和版本
+        if (!data.meta || !data.meta.version) {
+            throw new Error('无效的数据格式：缺少元数据');
+        }
+        
+        // 检查版本兼容性
+        const version = data.meta.version;
+        if (!version.startsWith('1.')) {
+            if (!confirm(`数据版本 ${version} 可能不兼容当前版本 1.4。是否继续导入？`)) {
+                return;
             }
-        };
+        }
         
-        reader.onerror = function() {
-            alert('读取文件失败，请重试');
-            input.value = '';
-        };
+        // 恢复基础面板数据
+        if (data.character) {
+            document.getElementById('base_hp').value = data.character.base_hp || '';
+            document.getElementById('total_hp_now').value = data.character.total_hp_now || '';
+            document.getElementById('base_atk').value = data.character.base_atk || '';
+            document.getElementById('total_atk_now').value = data.character.total_atk_now || '';
+            document.getElementById('base_def').value = data.character.base_def || '';
+            document.getElementById('total_def_now').value = data.character.total_def_now || '';
+            document.getElementById('base_cr').value = data.character.base_cr || '';
+            document.getElementById('base_cd').value = data.character.base_cd || '';
+        }
         
-        reader.readAsText(file);
+        // 恢复静态加成
+        if (data.static_bonus && Array.isArray(data.static_bonus)) {
+            setStaticBonusConfig(data.static_bonus);
+        }
+        
+        // 恢复动态Buff池
+        if (data.buffs && Array.isArray(data.buffs)) {
+            // 清空现有Buff池
+            document.getElementById('buff_pool').innerHTML = '';
+            // 添加Buff
+            data.buffs.forEach(buff => {
+                const typeOptions = DAMAGE_TYPES.map(t => 
+                    `<option value="${t.id}" ${t.id === buff.type ? 'selected' : ''}>${t.name}</option>`
+                ).join('');
+                const html = `
+                    <div class="buff-config" data-id="${buff.id}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
+                        <div class="input-row">
+                            <input type="text" class="b-name" value="${buff.name || '新Buff'}" style="width:80px" oninput="syncBuffNames('${buff.id}', this.value)">
+                            <select class="b-cat" onchange="calculate()">
+                                <option value="bonus" ${buff.cat === 'bonus' ? 'selected' : ''}>伤害加成</option>
+                                <option value="deepen" ${buff.cat === 'deepen' ? 'selected' : ''}>伤害加深</option>
+                                <option value="atk_pct" ${buff.cat === 'atk_pct' ? 'selected' : ''}>攻击%</option>
+                                <option value="cr" ${buff.cat === 'cr' ? 'selected' : ''}>暴击率</option>
+                                <option value="cd" ${buff.cat === 'cd' ? 'selected' : ''}>暴击伤害</option>
+                                <option value="hp_pct" ${buff.cat === 'hp_pct' ? 'selected' : ''}>生命%</option>
+                                <option value="def_pct" ${buff.cat === 'def_pct' ? 'selected' : ''}>防御%</option>
+                            </select>
+                        </div>
+                        <div class="input-row">
+                            <select class="b-type" onchange="calculate()">${typeOptions}</select>
+                            <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="calculate()">%
+                            <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                        </div>
+                    </div>`;
+                document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
+            });
+        }
+        
+        // 恢复动作序列
+        if (data.sequence && Array.isArray(data.sequence)) {
+            sequence = data.sequence;
+        }
+        
+        // 恢复声骸配置
+        if (data.echoes) {
+            if (data.echoes.echo_a) {
+                setEchoConfig('echo_a', data.echoes.echo_a);
+            }
+            if (data.echoes.echo_b) {
+                setEchoConfig('echo_b', data.echoes.echo_b);
+            }
+        }
+        
+        // 恢复自定义伤害类型
+        if (data.damage_types && Array.isArray(data.damage_types)) {
+            // 移除现有的自定义类型
+            DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
+            // 添加导入的自定义类型
+            data.damage_types.forEach(t => {
+                DAMAGE_TYPES.push(t);
+            });
+        }
+        
+        // 更新界面
+        updateBuffPool();
+        updateAllDamageTypeSelects();
+        renderSequence();
+        calculate();
+    }
+
+    // 从XLSX工作簿导入
+    function importFromXLSX(workbook) {
+        // 注意：由于XLSX导出主要是为了便于查看，导入功能可能无法完全恢复所有数据
+        // 这里我们主要尝试恢复基础面板数据
+        
+        // 1. 读取基础面板数据
+        const baseSheet = workbook.Sheets["基础面板"];
+        if (baseSheet) {
+            const baseData = XLSX.utils.sheet_to_json(baseSheet, { header: 1 });
+            // 简单解析：第一列是属性名，第二列是基础值，第三列是当前值
+            for (let i = 1; i < baseData.length; i++) {
+                const row = baseData[i];
+                if (row && row.length >= 2) {
+                    const prop = row[0];
+                    const baseVal = row[1];
+                    const currentVal = row[2] || '';
+                    
+                    if (prop === "生命值") {
+                        document.getElementById('base_hp').value = baseVal;
+                        document.getElementById('total_hp_now').value = currentVal;
+                    } else if (prop === "攻击力") {
+                        document.getElementById('base_atk').value = baseVal;
+                        document.getElementById('total_atk_now').value = currentVal;
+                    } else if (prop === "防御力") {
+                        document.getElementById('base_def').value = baseVal;
+                        document.getElementById('total_def_now').value = currentVal;
+                    } else if (prop === "暴击率(%)") {
+                        document.getElementById('base_cr').value = baseVal;
+                    } else if (prop === "暴击伤害(%)") {
+                        document.getElementById('base_cd').value = baseVal;
+                    }
+                }
+            }
+        }
+        
+        // 2. 读取静态加成（简化处理）
+        const staticSheet = workbook.Sheets["静态加成"];
+        if (staticSheet) {
+            const staticData = XLSX.utils.sheet_to_json(staticSheet, { header: 1 });
+            // 清空现有静态加成
+            document.getElementById('static_bonus_list').innerHTML = '';
+            // 从第二行开始（跳过标题行）
+            for (let i = 1; i < staticData.length; i++) {
+                const row = staticData[i];
+                if (row && row.length >= 2) {
+                    const typeName = row[0];
+                    const value = row[1];
+                    // 查找对应的伤害类型ID
+                    const damageType = DAMAGE_TYPES.find(t => t.name === typeName);
+                    if (damageType) {
+                        const options = DAMAGE_TYPES.map(t => 
+                            `<option value="${t.id}" ${t.id === damageType.id ? 'selected' : ''}>${t.name}</option>`
+                        ).join('');
+                        const html = `<div class="static-bonus-item input-row">
+                            <select class="s-type" onchange="calculate()">${options}</select>
+                            <input type="number" class="s-val" value="${value}" style="width:40px" oninput="calculate()">%
+                            <button onclick="this.parentElement.remove(); calculate();" style="color:var(--accent); background:none; border:none;">×</button>
+                        </div>`;
+                        document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
+                    }
+                }
+            }
+        }
+        
+        // 3. 更新计算
+        updateAllDamageTypeSelects();
+        calculate();
+        
+        // 提示用户
+        alert('Excel文件已导入基础面板和静态加成数据。\n\n注意：动态Buff、动作序列和声骸配置需要手动恢复，建议同时使用JSON格式进行完整备份。');
     }
 
     // 添加本地存储支持（可选功能）
