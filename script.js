@@ -535,18 +535,23 @@ function getColorForType(typeId) {
         const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
         
         let resBase, resB;
+        let echoASubs, echoBSubs;
         
         if (isEchoAEquipped) {
             // 声骸A已装备：基础伤害包含声骸A的词条
-            resBase = runSim(getEchoSubs('echo_a'));
+            echoASubs = getEchoSubs('echo_a');
+            echoBSubs = getEchoSubs('echo_b');
+            resBase = runSim(echoASubs);
             // 替换为声骸B后的伤害
-            resB = runSim(getEchoSubs('echo_b'));
+            resB = runSim(echoBSubs);
         } else {
             // 声骸A未装备：基础伤害不包含任何声骸词条
+            echoASubs = getEchoSubs('echo_a');
+            echoBSubs = getEchoSubs('echo_b');
             resBase = runSim([]);
             // 分别计算声骸A和B的提升
-            const resA = runSim(getEchoSubs('echo_a'));
-            const resBWithA = runSim(getEchoSubs('echo_b'));
+            const resA = runSim(echoASubs);
+            const resBWithA = runSim(echoBSubs);
             
             const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
             const gainB = (resBWithA.totalDmg / resBase.totalDmg - 1) * 100;
@@ -555,13 +560,13 @@ function getColorForType(typeId) {
             updateChart(resBase.typeDmg);
             updateDamageComposition(resBase.typeDmg);
             
-            document.getElementById('compare_res').innerHTML = `
-                <div style="margin-bottom:5px;">声骸 A 提升: <span class="diff-pos">+${gainA.toFixed(2)}%</span></div>
-                <div style="margin-bottom:8px;">声骸 B 提升: <span class="diff-pos">+${gainB.toFixed(2)}%</span></div>
-                <div style="border-top:1px dashed #555; padding-top:8px; font-weight:bold; font-size:1.1em;">
-                    结论: ${diff > 0 ? `声骸 A 强 <span class="diff-pos">${diff.toFixed(2)}%</span>` : `声骸 B 强 <span class="diff-neg">${Math.abs(diff).toFixed(2)}%</span>`}
-                </div>
-            `;
+            // 显示详细的变化分析
+            document.getElementById('compare_res').innerHTML = generateDamageChangeAnalysis(
+                resBase, resA, resBWithA, 
+                echoASubs, echoBSubs,
+                gainA, gainB, diff,
+                false
+            );
             return;
         }
 
@@ -571,16 +576,247 @@ function getColorForType(typeId) {
         // 计算声骸B相对于声骸A的提升
         const gainB = (resB.totalDmg / resBase.totalDmg - 1) * 100;
 
-        document.getElementById('compare_res').innerHTML = `
-            <div style="margin-bottom:5px;">当前装备: <span style="color:#8B4513; font-weight:bold;">声骸 A</span></div>
-            <div style="margin-bottom:8px;">替换为声骸 B 后: <span class="${gainB >= 0 ? 'diff-pos' : 'diff-neg'}">${gainB >= 0 ? '+' : ''}${gainB.toFixed(2)}%</span></div>
-            <div style="border-top:1px dashed #555; padding-top:8px; font-weight:bold; font-size:1.1em;">
-                结论: ${gainB > 0 ? `声骸 B 更强 <span class="diff-pos">${gainB.toFixed(2)}%</span>` : `声骸 A 更强 <span class="diff-neg">${Math.abs(gainB).toFixed(2)}%</span>`}
-            </div>
-            <div style="margin-top:10px; font-size:11px; color:#8b949e; background:rgba(139, 69, 19, 0.1); padding:8px; border-radius:6px;">
-                💡 假设声骸A已装备在角色身上，计算替换为声骸B后的伤害变化
+        // 显示详细的变化分析
+        document.getElementById('compare_res').innerHTML = generateDamageChangeAnalysis(
+            resBase, null, resB, 
+            echoASubs, echoBSubs,
+            0, gainB, gainB,
+            true
+        );
+    }
+
+    // 生成伤害变化分析表格
+    function generateDamageChangeAnalysis(resBase, resA, resB, echoASubs, echoBSubs, gainA, gainB, diff, isEchoAEquipped) {
+        // 获取声骸词条详情
+        const echoADetails = getEchoSubDetails(echoASubs);
+        const echoBDetails = getEchoSubDetails(echoBSubs);
+        
+        // 计算伤害类型变化
+        const typeChanges = calculateTypeChanges(resBase.typeDmg, resB.typeDmg);
+        
+        let html = `
+            <div style="margin-bottom:15px;">
+                <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
+                    ${isEchoAEquipped ? '声骸替换影响分析' : '声骸提升对比分析'}
+                </h3>
+        `;
+        
+        if (isEchoAEquipped) {
+            html += `
+                <div style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>当前装备: <strong style="color:#8B4513;">声骸 A</strong></span>
+                        <span style="font-weight:bold;">${resBase.totalDmg.toFixed(0)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>替换为: <strong style="color:#A0522D;">声骸 B</strong></span>
+                        <span style="font-weight:bold;">${resB.totalDmg.toFixed(0)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-top:8px; border-top:1px dashed rgba(139, 69, 19, 0.3);">
+                        <span><strong>变化:</strong></span>
+                        <span class="${gainB >= 0 ? 'diff-pos' : 'diff-neg'}" style="font-weight:bold; font-size:1.1em;">
+                            ${gainB >= 0 ? '+' : ''}${gainB.toFixed(2)}%
+                        </span>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>无任何声骸:</span>
+                        <span style="font-weight:bold;">${resBase.totalDmg.toFixed(0)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>装备声骸 A:</span>
+                        <span style="font-weight:bold;">${resA.totalDmg.toFixed(0)} <span class="diff-pos">(+${gainA.toFixed(2)}%)</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span>装备声骸 B:</span>
+                        <span style="font-weight:bold;">${resB.totalDmg.toFixed(0)} <span class="diff-pos">(+${gainB.toFixed(2)}%)</span></span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 声骸词条对比表格
+        html += `
+            <div style="margin-bottom:15px;">
+                <h4 style="margin:10px 0 5px 0; color:#8B4513; font-size:0.95em;">声骸词条对比</h4>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                        <thead>
+                            <tr style="background:rgba(139, 69, 19, 0.1);">
+                                <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">词条类型</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">声骸 A</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">声骸 B</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">差值</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        // 合并所有词条类型
+        const allSubTypes = new Set([...Object.keys(echoADetails), ...Object.keys(echoBDetails)]);
+        let hasRows = false;
+        
+        allSubTypes.forEach(subType => {
+            const aVal = echoADetails[subType] || 0;
+            const bVal = echoBDetails[subType] || 0;
+            const diffVal = bVal - aVal;
+            
+            if (aVal !== 0 || bVal !== 0) {
+                hasRows = true;
+                const diffClass = diffVal > 0 ? 'diff-pos' : (diffVal < 0 ? 'diff-neg' : '');
+                const diffSign = diffVal > 0 ? '+' : '';
+                
+                html += `
+                    <tr style="border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                        <td style="padding:6px;">${getSubstatName(subType)}</td>
+                        <td style="padding:6px; text-align:right;">${aVal.toFixed(1)}%</td>
+                        <td style="padding:6px; text-align:right;">${bVal.toFixed(1)}%</td>
+                        <td style="padding:6px; text-align:right; ${diffClass ? `class="${diffClass}"` : ''}">
+                            ${diffVal !== 0 ? `${diffSign}${diffVal.toFixed(1)}%` : '0%'}
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        
+        if (!hasRows) {
+            html += `
+                <tr>
+                    <td colspan="4" style="padding:10px; text-align:center; color:#8b949e;">
+                        无有效词条数据
+                    </td>
+                </tr>
+            `;
+        }
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
+        
+        // 伤害类型变化表格
+        if (typeChanges.length > 0) {
+            html += `
+                <div style="margin-bottom:15px;">
+                    <h4 style="margin:10px 0 5px 0; color:#8B4513; font-size:0.95em;">各伤害类型变化</h4>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                            <thead>
+                                <tr style="background:rgba(139, 69, 19, 0.1);">
+                                    <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">伤害类型</th>
+                                    <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">变化前</th>
+                                    <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">变化后</th>
+                                    <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">变化量</th>
+                                    <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">变化率</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            typeChanges.forEach(change => {
+                const changeClass = change.changePercent > 0 ? 'diff-pos' : (change.changePercent < 0 ? 'diff-neg' : '');
+                const changeSign = change.changePercent > 0 ? '+' : '';
+                
+                html += `
+                    <tr style="border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                        <td style="padding:6px;">
+                            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:${getColorForType(change.type)};"></span>
+                            ${change.typeName}
+                        </td>
+                        <td style="padding:6px; text-align:right;">${change.before.toFixed(0)}</td>
+                        <td style="padding:6px; text-align:right;">${change.after.toFixed(0)}</td>
+                        <td style="padding:6px; text-align:right; ${changeClass ? `class="${changeClass}"` : ''}">
+                            ${change.change !== 0 ? `${changeSign}${change.change.toFixed(0)}` : '0'}
+                        </td>
+                        <td style="padding:6px; text-align:right; ${changeClass ? `class="${changeClass}"` : ''}">
+                            ${change.changePercent !== 0 ? `${changeSign}${change.changePercent.toFixed(2)}%` : '0%'}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 结论部分
+        html += `
+            <div style="border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px; margin-top:10px;">
+                <div style="font-weight:bold; font-size:1.1em; margin-bottom:5px; color:#8B4513;">
+                    结论: ${isEchoAEquipped ? 
+                        (gainB > 0 ? `声骸 B 更强 <span class="diff-pos">${gainB.toFixed(2)}%</span>` : `声骸 A 更强 <span class="diff-neg">${Math.abs(gainB).toFixed(2)}%</span>`) :
+                        (diff > 0 ? `声骸 A 强 <span class="diff-pos">${diff.toFixed(2)}%</span>` : `声骸 B 强 <span class="diff-neg">${Math.abs(diff).toFixed(2)}%</span>`)
+                    }
+                </div>
+                <div style="font-size:11px; color:#8b949e; background:rgba(139, 69, 19, 0.1); padding:8px; border-radius:6px; margin-top:8px;">
+                    💡 ${isEchoAEquipped ? 
+                        '假设声骸A已装备在角色身上，计算替换为声骸B后的伤害变化' :
+                        '对比声骸A和声骸B相对于无任何声骸的提升效果'
+                    }
+                </div>
+            </div>
+        `;
+        
+        return html;
+    }
+
+    // 获取声骸词条详情
+    function getEchoSubDetails(subs) {
+        const details = {};
+        subs.forEach(sub => {
+            const data = SUBSTAT_DATA[sub.key];
+            if (data && data.isPct) {
+                const type = data.type;
+                details[type] = (details[type] || 0) + sub.val;
+            }
+        });
+        return details;
+    }
+
+    // 获取词条名称
+    function getSubstatName(type) {
+        for (const key in SUBSTAT_DATA) {
+            if (SUBSTAT_DATA[key].type === type) {
+                return SUBSTAT_DATA[key].name;
+            }
+        }
+        return type;
+    }
+
+    // 计算伤害类型变化
+    function calculateTypeChanges(beforeDmg, afterDmg) {
+        const changes = [];
+        DAMAGE_TYPES.forEach(type => {
+            if (type.id !== 'all') {
+                const before = beforeDmg[type.id] || 0;
+                const after = afterDmg[type.id] || 0;
+                if (before > 0 || after > 0) {
+                    const change = after - before;
+                    const changePercent = before > 0 ? (change / before * 100) : (after > 0 ? 100 : 0);
+                    changes.push({
+                        type: type.id,
+                        typeName: type.name,
+                        before: before,
+                        after: after,
+                        change: change,
+                        changePercent: changePercent
+                    });
+                }
+            }
+        });
+        // 按变化量绝对值排序
+        changes.sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+        return changes;
     }
 
     // --- 通用辅助 ---
