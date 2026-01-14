@@ -96,7 +96,7 @@
         
         // 重新渲染序列
         renderSequence();
-        calculate();
+        // 注意：这里不调用calculate，由调用者决定是否计算
     }
 
     // 自动加载上次配置
@@ -131,7 +131,7 @@
         // 初始化伤害类型选择器
         updateAllDamageTypeSelects();
         
-        // 尝试自动加载上次保存的配置
+        // 尝试自动加载上次保存的配置（抑制计算）
         const hasLoaded = autoLoadLastConfig();
         
         // 只有在没有加载到配置时才使用默认配置
@@ -146,12 +146,23 @@
                     activeBuffs: [] 
                 }];
                 renderSequence();
-                // 页面初始化时不显示验证警告
-                calculate(false);
             }
-        } else {
-            // 如果加载成功，确保计算一次以更新界面，但不显示验证警告
+        }
+        
+        // 只有在序列不为空时才进行计算
+        if (sequence.length > 0) {
+            // 页面初始化时不显示验证警告
             calculate(false);
+        } else {
+            // 如果序列为空，只更新界面但不计算
+            console.log('⚠️ 序列为空，跳过初始计算');
+            // 清空结果显示区域
+            document.getElementById('compare_res').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">请添加动作序列后点击"执行全量化分析"</div>';
+            // 清空图表
+            const ctx = document.getElementById('dmgChart').getContext('2d');
+            if (dmgChart) dmgChart.destroy();
+            // 清空伤害组成表格
+            document.getElementById('damageComposition').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
         }
 
         // 添加输入框动画效果
@@ -168,13 +179,21 @@
         const echoACheckbox = document.getElementById('echo_a_equipped');
         if (echoACheckbox) {
             echoACheckbox.addEventListener('change', function() {
-                calculate(false);
+                // 只有在序列不为空时才计算
+                if (sequence.length > 0) {
+                    calculate(false);
+                }
             });
         }
 
         // 为所有现有的声骸数值选择器添加事件监听器
         document.querySelectorAll('.sub-val').forEach(select => {
-            select.addEventListener('change', calculate);
+            select.addEventListener('change', function() {
+                // 只有在序列不为空时才计算
+                if (sequence.length > 0) {
+                    calculate(false);
+                }
+            });
         });
 
         // 添加键盘快捷键支持
@@ -197,7 +216,12 @@
             // Ctrl+R 重新计算
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
-                calculate();
+                // 只有在序列不为空时才计算
+                if (sequence.length > 0) {
+                    calculate();
+                } else {
+                    alert('⚠️ 动作序列为空，请至少添加一个动作');
+                }
             }
         });
 
@@ -219,6 +243,9 @@
             console.log('📋 快捷键：Ctrl+S保存，Ctrl+Shift+S导出，Ctrl+L加载，Ctrl+R计算');
             console.log('📊 声骸词条修改实时计算已启用');
             console.log('💾 自动保存功能已启用（每5分钟）');
+            if (sequence.length === 0) {
+                console.log('⚠️ 当前动作序列为空，请添加动作后进行计算');
+            }
         }, 500);
     };
 
@@ -315,7 +342,8 @@ function addAction() {
     });
 
     renderSequence();
-    calculate();
+    // 添加动作后自动计算，但不显示验证警告
+    calculate(false);
 }
 
     function renderSequence() {
@@ -701,6 +729,21 @@ function getColorForType(typeId) {
     }
 
     function calculate(showValidationAlert = true) {
+        // 首先检查序列是否为空
+        if (sequence.length === 0) {
+            if (showValidationAlert) {
+                alert('⚠️ 动作序列为空，请至少添加一个动作');
+            }
+            // 清空结果显示区域
+            document.getElementById('compare_res').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">请添加动作序列后点击"执行全量化分析"</div>';
+            // 清空图表
+            const ctx = document.getElementById('dmgChart').getContext('2d');
+            if (dmgChart) dmgChart.destroy();
+            // 清空伤害组成表格
+            document.getElementById('damageComposition').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
+            return;
+        }
+        
         // 执行数据验证，但可以控制是否显示警告
         if (!validateInputs(showValidationAlert)) {
             return;
