@@ -10,10 +10,10 @@
         "skill": { name: "共鸣技能加成", type: "skill", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "ult": { name: "共鸣解放加成", type: "ult", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
         "eff": { name: "共鸣效率", type: "other", isPct: true, values: [12.4, 11.6, 10.8, 10.0, 9.2, 8.4, 7.6, 6.8] },
-        "hp_pct": { name: "百分比生命", type: "other", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
-        "hp_flat": { name: "固定生命", type: "other", isPct: false, values: [580, 540, 510, 470, 430, 390, 360, 320] },
-        "def_pct": { name: "百分比防御", type: "other", isPct: true, values: [14.7, 13.8, 12.8, 11.8, 10.9, 10.0, 9.0, 8.1] },
-        "def_flat": { name: "固定防御", type: "other", isPct: false, values: [70, 60, 50, 40] }
+        "hp_pct": { name: "百分比生命", type: "hp_pct", isPct: true, values: [11.6, 10.9, 10.1, 9.4, 8.6, 7.9, 7.1, 6.4] },
+        "hp_flat": { name: "固定生命", type: "hp_flat", isPct: false, values: [580, 540, 510, 470, 430, 390, 360, 320] },
+        "def_pct": { name: "百分比防御", type: "def_pct", isPct: true, values: [14.7, 13.8, 12.8, 11.8, 10.9, 10.0, 9.0, 8.1] },
+        "def_flat": { name: "固定防御", type: "def_flat", isPct: false, values: [70, 60, 50, 40] }
     };
 
     // 统一的伤害类型配置
@@ -341,6 +341,7 @@ function runSim(extraSubs = []) {
 
     // 3. 处理副词条加成 (需增加生命和防御属性识别)
     let subValues = { atk_pct: 0, hp_pct: 0, def_pct: 0, cr: 0, cd: 0 };
+    let subFlatValues = { atk_flat: 0, hp_flat: 0, def_flat: 0 };
     // 初始化subBonus，包含所有DAMAGE_TYPES中除了'all'的类型
     // 注意：声骸副词条只包含普攻、重击、共鸣技能、共鸣解放四种类型
     let subBonus = {};
@@ -353,9 +354,15 @@ function runSim(extraSubs = []) {
     extraSubs.forEach(s => {
         const d = SUBSTAT_DATA[s.key];
         if(!d) return;
-        const v = s.val / 100;
-        if(subValues[d.type] !== undefined) subValues[d.type] += v;
-        else if(subBonus[d.type] !== undefined) subBonus[d.type] += v;
+        
+        if (d.isPct) {
+            const v = s.val / 100;
+            if(subValues[d.type] !== undefined) subValues[d.type] += v;
+            else if(subBonus[d.type] !== undefined) subBonus[d.type] += v;
+        } else {
+            // 处理固定值词条
+            if(subFlatValues[d.type] !== undefined) subFlatValues[d.type] += s.val;
+        }
     });
 
     // 动态初始化typeDmg，包含所有DAMAGE_TYPES中除了'all'的类型
@@ -391,6 +398,16 @@ function runSim(extraSubs = []) {
         let curBonus = 1 + staticBonusMap.all + staticBonusMap[a.type] + (subBonus[a.type] || 0);
         let curDeepen = 1;
 
+        // 获取固定值加成
+        let curFlatValue = 0;
+        if (a.scaling === 'atk') {
+            curFlatValue = subFlatValues.atk_flat;
+        } else if (a.scaling === 'hp') {
+            curFlatValue = subFlatValues.hp_flat;
+        } else if (a.scaling === 'def') {
+            curFlatValue = subFlatValues.def_flat;
+        }
+
         // 5. 应用动态 Buff
         a.activeBuffs.forEach(bid => {
             const b = buffPool.find(x => x.id === bid);
@@ -403,8 +420,8 @@ function runSim(extraSubs = []) {
             }
         });
 
-        // 最终属性计算：当前面板 + (基础属性 * 额外百分比加成)
-        const finalScalingValue = currentTotalStat + (baseStat * curAttrPct);
+        // 最终属性计算：当前面板 + (基础属性 * 额外百分比加成) + 固定值加成
+        const finalScalingValue = currentTotalStat + (baseStat * curAttrPct) + curFlatValue;
         const critExp = 1 + Math.min(1, curCr) * (curCd - 1);
 
         // 核心伤害公式
