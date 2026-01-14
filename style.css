@@ -219,7 +219,84 @@
             display: flex;
             gap: 12px;
             margin-bottom: 20px;
+            position: relative;
         }
+        
+        /* 导出下拉菜单样式 */
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .export-btn {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .export-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .export-menu a {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .export-menu a:last-child {
+            border-bottom: none;
+        }
+        
+        .export-menu a:hover {
+            background-color: #f1f1f1;
+            color: #4a6bff;
+        }
+        
+        .export-dropdown:hover .export-menu {
+            display: block;
+        }
+        
+        .export-dropdown:hover .export-btn {
+            background: linear-gradient(135deg, #3a5bef, #5a7bff) !important;
+        }
+>>>>>>> REPLACE```
+
+现在，需要修改script.js中的exportFullData函数，让它不再显示prompt，而是直接调用相应的导出函数。由于我们已经有了exportToJSON和exportToXLSX函数，我们可以保留它们，但需要修改exportFullData函数，或者直接删除它，因为现在通过下拉菜单直接调用具体的导出函数。
+
+为了保持兼容性，我将修改exportFullData函数，让它默认导出JSON格式，或者我们可以直接删除它，但为了确保没有其他地方调用它，我将修改它：
+
+script.js
+```javascript
+<<<<<<< SEARCH
+    // 导出数据（支持JSON和XLSX格式）
+    function exportFullData() {
+        // 询问用户选择导出格式
+        const format = prompt('请选择导出格式（输入 1 或 2）：\n1. JSON格式（推荐备份）\n2. Excel格式（.xlsx，便于查看）', '1');
+        
+        if (format === '1') {
+            exportToJSON();
+        } else if (format === '2') {
+            exportToXLSX();
+        } else {
+            alert('已取消导出');
+        }
+    }
 
         /* 图表容器 */
         #dmgChart {
