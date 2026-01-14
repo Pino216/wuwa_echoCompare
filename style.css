@@ -238,7 +238,7 @@
         .export-menu {
             display: none;
             position: absolute;
-            top: 100%;
+            top: calc(100% + 5px);
             left: 0;
             background-color: white;
             min-width: 200px;
@@ -246,7 +246,6 @@
             z-index: 1000;
             border-radius: 8px;
             overflow: hidden;
-            margin-top: 5px;
         }
         
         .export-menu a {
@@ -268,7 +267,8 @@
             color: #4a6bff;
         }
         
-        .export-dropdown:hover .export-menu {
+        .export-dropdown:hover .export-menu,
+        .export-menu:hover {
             display: block;
         }
         
