@@ -24,6 +24,12 @@
             📥 导入方案
         </button>
         <input type="file" id="csvImport" style="display:none" onchange="importFullData(this)">
+        <button class="btn" onclick="saveToLocalStorage()" style="background:linear-gradient(135deg, #4caf50, #66bb6a);">
+            💾 保存到本地
+        </button>
+        <button class="btn" onclick="loadFromLocalStorage()" style="background:linear-gradient(135deg, #2196f3, #42a5f5);">
+            📂 从本地加载
+        </button>
         <button class="btn" onclick="location.reload()" style="background:linear-gradient(135deg, #ff9800, #ffb74d); margin-left:auto;">
             🔄 重置页面
         </button>

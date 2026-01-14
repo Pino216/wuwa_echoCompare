@@ -39,11 +39,17 @@
 
     function removeCustomDamageType(typeId) {
         if (typeId.startsWith('custom_')) {
-            DAMAGE_TYPES = DAMAGE_TYPES.filter(t => t.id !== typeId);
-            updateAllDamageTypeSelects();
-            alert('已删除自定义伤害类型');
+            // 查找要删除的类型名称
+            const typeToDelete = DAMAGE_TYPES.find(t => t.id === typeId);
+            const typeName = typeToDelete ? typeToDelete.name : '未知类型';
+            
+            if (confirm(`确定要删除自定义伤害类型"${typeName}"吗？\n\n注意：删除后，使用此类型的配置将恢复为默认类型。`)) {
+                DAMAGE_TYPES = DAMAGE_TYPES.filter(t => t.id !== typeId);
+                updateAllDamageTypeSelects();
+                alert('✅ 已删除自定义伤害类型');
+            }
         } else {
-            alert('系统默认类型不能删除');
+            alert('❌ 系统默认类型不能删除');
         }
     }
 
@@ -127,9 +133,29 @@
             echoACheckbox.addEventListener('change', calculate);
         }
 
+        // 添加键盘快捷键支持
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S 保存到本地
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveToLocalStorage();
+            }
+            // Ctrl+L 从本地加载
+            if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                loadFromLocalStorage();
+            }
+            // Ctrl+R 重新计算
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                calculate();
+            }
+        });
+
         // 添加欢迎提示
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
+            console.log('📋 快捷键：Ctrl+S保存，Ctrl+L加载，Ctrl+R计算');
         }, 500);
     };
 
@@ -545,7 +571,64 @@ function getColorForType(typeId) {
     return colorMap[typeId] || '#8b949e';
 }
 
+    // 数据验证函数
+    function validateInputs() {
+        // 验证基础攻击力
+        const baseAtk = parseFloat(document.getElementById('base_atk').value);
+        if (isNaN(baseAtk) || baseAtk <= 0) {
+            alert('❌ 基础攻击力必须为正数');
+            document.getElementById('base_atk').focus();
+            return false;
+        }
+        
+        // 验证当前攻击力
+        const totalAtkNow = parseFloat(document.getElementById('total_atk_now').value);
+        if (isNaN(totalAtkNow) || totalAtkNow <= 0) {
+            alert('❌ 当前面板总攻击必须为正数');
+            document.getElementById('total_atk_now').focus();
+            return false;
+        }
+        
+        // 验证暴击率
+        const baseCr = parseFloat(document.getElementById('base_cr').value);
+        if (isNaN(baseCr) || baseCr < 0 || baseCr > 100) {
+            alert('❌ 暴击率必须在0-100%之间');
+            document.getElementById('base_cr').focus();
+            return false;
+        }
+        
+        // 验证暴击伤害
+        const baseCd = parseFloat(document.getElementById('base_cd').value);
+        if (isNaN(baseCd) || baseCd < 0) {
+            alert('❌ 暴击伤害必须为非负数');
+            document.getElementById('base_cd').focus();
+            return false;
+        }
+        
+        // 验证动作序列
+        if (sequence.length === 0) {
+            alert('⚠️ 动作序列为空，请至少添加一个动作');
+            return false;
+        }
+        
+        // 验证动作倍率
+        for (let i = 0; i < sequence.length; i++) {
+            const action = sequence[i];
+            if (isNaN(action.mult) || action.mult <= 0) {
+                alert(`❌ 动作"${action.name}"的倍率必须为正数`);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     function calculate() {
+        // 执行数据验证
+        if (!validateInputs()) {
+            return;
+        }
+        
         const getEchoSubs = (id) => {
             const subs = [];
             document.querySelectorAll(`#${id} .substat-row`).forEach(row => {
@@ -1592,14 +1675,15 @@ options: {
         alert('Excel文件已导入基础面板和静态加成数据。\n\n注意：动态Buff、动作序列和声骸配置需要手动恢复，建议同时使用JSON格式进行完整备份。');
     }
 
-    // 添加本地存储支持（可选功能）
+    // 添加本地存储支持（完整功能）
     function saveToLocalStorage() {
         try {
             updateBuffPool();
             const config = {
                 meta: {
                     version: "1.4",
-                    save_time: new Date().toISOString()
+                    save_time: new Date().toISOString(),
+                    tool_name: "鸣潮伤害分析与声骸词条对比工具"
                 },
                 character: {
                     base_hp: document.getElementById('base_hp').value,
@@ -1617,15 +1701,16 @@ options: {
                 echoes: {
                     echo_a: getEchoConfig('echo_a'),
                     echo_b: getEchoConfig('echo_b')
-                }
+                },
+                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
             };
             
             localStorage.setItem('mingchao_damage_calc_v1.4', JSON.stringify(config));
-            alert('配置已保存到本地存储！');
+            alert('✅ 配置已保存到本地存储！');
             return true;
         } catch (error) {
             console.error('保存到本地存储失败:', error);
-            alert('保存失败: ' + error.message);
+            alert('❌ 保存失败: ' + error.message);
             return false;
         }
     }
@@ -1638,26 +1723,17 @@ options: {
                 return false;
             }
             
-            // 模拟文件导入流程
             const data = JSON.parse(saved);
             
-            // 使用与文件导入相同的恢复逻辑
-            // （这里可以重构为共享函数，但为保持简单，直接调用相关函数）
-            if (confirm('是否从本地存储加载上次保存的配置？')) {
-                // 创建虚拟事件对象来复用导入逻辑
-                const virtualInput = {
-                    files: [{
-                        name: 'local_storage_backup.json'
-                    }]
-                };
-                // 由于不能直接调用importFullData，我们手动触发恢复
-                // 这里简化处理，实际应该复用代码
-                alert('本地存储加载功能需要进一步实现，建议使用导入导出文件功能。');
+            if (confirm('是否从本地存储加载上次保存的配置？\n\n版本: ' + (data.meta?.version || '未知') + '\n保存时间: ' + (data.meta?.save_time || '未知'))) {
+                // 直接调用importFromJSON来恢复配置
+                importFromJSON(data);
+                alert('✅ 配置已从本地存储加载！');
             }
             return true;
         } catch (error) {
             console.error('从本地存储加载失败:', error);
-            alert('加载失败: ' + error.message);
+            alert('❌ 加载失败: ' + error.message);
             return false;
         }
     }
