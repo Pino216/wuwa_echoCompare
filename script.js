@@ -627,18 +627,10 @@ options: {
         });
     }
 
-    // 导出数据（支持JSON和XLSX格式）
+    // 导出数据（支持JSON和XLSX格式）- 现在通过下拉菜单选择
     function exportFullData() {
-        // 询问用户选择导出格式
-        const format = prompt('请选择导出格式（输入 1 或 2）：\n1. JSON格式（推荐备份）\n2. Excel格式（.xlsx，便于查看）', '1');
-        
-        if (format === '1') {
-            exportToJSON();
-        } else if (format === '2') {
-            exportToXLSX();
-        } else {
-            alert('已取消导出');
-        }
+        // 默认导出JSON格式，以保持向后兼容性
+        exportToJSON();
     }
 
     // 导出为JSON格式
