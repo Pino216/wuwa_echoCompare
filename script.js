@@ -99,6 +99,30 @@
         calculate();
     }
 
+    // 自动加载上次配置
+    function autoLoadLastConfig() {
+        try {
+            const saved = localStorage.getItem('mingchao_damage_calc_v1.4');
+            if (saved) {
+                const data = JSON.parse(saved);
+                // 检查是否在24小时内保存的
+                const saveTime = new Date(data.meta?.save_time || 0);
+                const now = new Date();
+                const hoursDiff = (now - saveTime) / (1000 * 60 * 60);
+                
+                if (hoursDiff < 24) {
+                    // 24小时内的配置，静默加载
+                    importFromJSON(data);
+                    console.log('✅ 自动加载了上次保存的配置');
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.warn('自动加载配置失败:', error);
+        }
+        return false;
+    }
+
     // 添加页面加载时的视觉增强
     window.onload = () => {
         initEchoSelects('echo_a');
@@ -107,15 +131,21 @@
         // 初始化伤害类型选择器
         updateAllDamageTypeSelects();
         
-        sequence = [{ 
-            name: "技能演示", 
-            mult: 2.5, 
-            type: "skill", 
-            scaling: "atk",
-            activeBuffs: [] 
-        }];
-        renderSequence();
-        calculate();
+        // 尝试自动加载上次保存的配置
+        const hasLoaded = autoLoadLastConfig();
+        
+        // 如果没有任何配置，使用默认配置
+        if (!hasLoaded || sequence.length === 0) {
+            sequence = [{ 
+                name: "技能演示", 
+                mult: 2.5, 
+                type: "skill", 
+                scaling: "atk",
+                activeBuffs: [] 
+            }];
+            renderSequence();
+            calculate();
+        }
 
         // 添加输入框动画效果
         document.querySelectorAll('input, select').forEach(el => {
@@ -140,15 +170,20 @@
 
         // 添加键盘快捷键支持
         document.addEventListener('keydown', function(e) {
-            // Ctrl+S 保存到本地
+            // Ctrl+S 保存配置
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                saveToLocalStorage();
+                saveConfig();
             }
-            // Ctrl+L 从本地加载
+            // Ctrl+Shift+S 保存并导出
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                saveConfig(true, 'json');
+            }
+            // Ctrl+L 加载配置
             if (e.ctrlKey && e.key === 'l') {
                 e.preventDefault();
-                loadFromLocalStorage();
+                loadConfig();
             }
             // Ctrl+R 重新计算
             if (e.ctrlKey && e.key === 'r') {
@@ -157,11 +192,24 @@
             }
         });
 
+        // 添加自动保存定时器（每5分钟自动保存一次）
+        setInterval(() => {
+            const lastSave = localStorage.getItem('mingchao_damage_calc_last_auto_save');
+            const now = Date.now();
+            // 如果超过5分钟没有保存，自动保存
+            if (!lastSave || (now - parseInt(lastSave)) > 5 * 60 * 1000) {
+                saveConfig();
+                localStorage.setItem('mingchao_damage_calc_last_auto_save', now.toString());
+                console.log('🔄 配置已自动保存');
+            }
+        }, 60 * 1000); // 每分钟检查一次
+
         // 添加欢迎提示
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
-            console.log('📋 快捷键：Ctrl+S保存，Ctrl+L加载，Ctrl+R计算');
+            console.log('📋 快捷键：Ctrl+S保存，Ctrl+Shift+S导出，Ctrl+L加载，Ctrl+R计算');
             console.log('📊 声骸词条修改实时计算已启用');
+            console.log('💾 自动保存功能已启用（每5分钟）');
         }, 500);
     };
 
@@ -1218,74 +1266,47 @@ options: {
         }
     }
     
-    function selectExportFormat(format) {
-        // 隐藏菜单
-        const menu = document.getElementById('exportMenu');
-        if (menu) {
-            menu.style.display = 'none';
-            exportMenuVisible = false;
-            document.removeEventListener('click', closeExportMenuOnClickOutside);
-        }
-        
-        // 根据选择执行导出
-        if (format === 'json') {
-            exportToJSON();
-        } else if (format === 'xlsx') {
-            exportToXLSX();
-        }
-    }
-    
     // 导出数据（支持JSON和XLSX格式）- 现在通过点击菜单选择
     function exportFullData() {
         // 默认导出JSON格式，以保持向后兼容性
         exportToJSON();
     }
 
-    // 导出为JSON格式
-    function exportToJSON() {
+    // 导出为JSON格式（可接受外部config参数）
+    function exportToJSON(externalConfig = null) {
         try {
-            updateBuffPool();
-            
-            // 收集所有配置数据
-            const config = {
-                // 元数据
-                meta: {
-                    version: "1.4",
-                    tool_name: "鸣潮伤害分析与声骸词条对比工具",
-                    export_time: new Date().toISOString(),
-                    data_version: 2
-                },
-                
-                // 基础面板数据
-                character: {
-                    base_hp: document.getElementById('base_hp').value,
-                    total_hp_now: document.getElementById('total_hp_now').value,
-                    base_atk: document.getElementById('base_atk').value,
-                    total_atk_now: document.getElementById('total_atk_now').value,
-                    base_def: document.getElementById('base_def').value,
-                    total_def_now: document.getElementById('total_def_now').value,
-                    base_cr: document.getElementById('base_cr').value,
-                    base_cd: document.getElementById('base_cd').value
-                },
-                
-                // 静态加成配置
-                static_bonus: getStaticBonusConfig(),
-                
-                // 动态Buff池
-                buffs: buffPool,
-                
-                // 动作序列
-                sequence: sequence,
-                
-                // 声骸配置
-                echoes: {
-                    echo_a: getEchoConfig('echo_a'),
-                    echo_b: getEchoConfig('echo_b')
-                },
-                
-                // 伤害类型配置（用于兼容性）
-                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
-            };
+            let config;
+            if (externalConfig) {
+                config = externalConfig;
+            } else {
+                updateBuffPool();
+                config = {
+                    meta: {
+                        version: "1.4",
+                        tool_name: "鸣潮伤害分析与声骸词条对比工具",
+                        export_time: new Date().toISOString(),
+                        data_version: 2
+                    },
+                    character: {
+                        base_hp: document.getElementById('base_hp').value,
+                        total_hp_now: document.getElementById('total_hp_now').value,
+                        base_atk: document.getElementById('base_atk').value,
+                        total_atk_now: document.getElementById('total_atk_now').value,
+                        base_def: document.getElementById('base_def').value,
+                        total_def_now: document.getElementById('total_def_now').value,
+                        base_cr: document.getElementById('base_cr').value,
+                        base_cd: document.getElementById('base_cd').value
+                    },
+                    static_bonus: getStaticBonusConfig(),
+                    buffs: buffPool,
+                    sequence: sequence,
+                    echoes: {
+                        echo_a: getEchoConfig('echo_a'),
+                        echo_b: getEchoConfig('echo_b')
+                    },
+                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+                };
+            }
             
             // 验证数据完整性
             const requiredFields = [
@@ -1332,37 +1353,40 @@ options: {
         }
     }
 
-    // 导出为XLSX格式
-    function exportToXLSX() {
+    // 导出为XLSX格式（可接受外部config参数）
+    function exportToXLSX(externalConfig = null) {
         try {
-            updateBuffPool();
-            
-            // 收集所有配置数据
-            const config = {
-                meta: {
-                    version: "1.4",
-                    tool_name: "鸣潮伤害分析与声骸词条对比工具",
-                    export_time: new Date().toISOString()
-                },
-                character: {
-                    base_hp: document.getElementById('base_hp').value,
-                    total_hp_now: document.getElementById('total_hp_now').value,
-                    base_atk: document.getElementById('base_atk').value,
-                    total_atk_now: document.getElementById('total_atk_now').value,
-                    base_def: document.getElementById('base_def').value,
-                    total_def_now: document.getElementById('total_def_now').value,
-                    base_cr: document.getElementById('base_cr').value,
-                    base_cd: document.getElementById('base_cd').value
-                },
-                static_bonus: getStaticBonusConfig(),
-                buffs: buffPool,
-                sequence: sequence,
-                echoes: {
-                    echo_a: getEchoConfig('echo_a'),
-                    echo_b: getEchoConfig('echo_b')
-                },
-                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
-            };
+            let config;
+            if (externalConfig) {
+                config = externalConfig;
+            } else {
+                updateBuffPool();
+                config = {
+                    meta: {
+                        version: "1.4",
+                        tool_name: "鸣潮伤害分析与声骸词条对比工具",
+                        export_time: new Date().toISOString()
+                    },
+                    character: {
+                        base_hp: document.getElementById('base_hp').value,
+                        total_hp_now: document.getElementById('total_hp_now').value,
+                        base_atk: document.getElementById('base_atk').value,
+                        total_atk_now: document.getElementById('total_atk_now').value,
+                        base_def: document.getElementById('base_def').value,
+                        total_def_now: document.getElementById('total_def_now').value,
+                        base_cr: document.getElementById('base_cr').value,
+                        base_cd: document.getElementById('base_cd').value
+                    },
+                    static_bonus: getStaticBonusConfig(),
+                    buffs: buffPool,
+                    sequence: sequence,
+                    echoes: {
+                        echo_a: getEchoConfig('echo_a'),
+                        echo_b: getEchoConfig('echo_b')
+                    },
+                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+                };
+            }
             
             // 创建工作簿
             const wb = XLSX.utils.book_new();
@@ -1685,15 +1709,16 @@ options: {
         alert('Excel文件已导入基础面板和静态加成数据。\n\n注意：动态Buff、动作序列和声骸配置需要手动恢复，建议同时使用JSON格式进行完整备份。');
     }
 
-    // 添加本地存储支持（完整功能）
-    function saveToLocalStorage() {
+    // 统一的保存功能 - 支持自动保存到本地存储，并可选择导出文件
+    function saveConfig(exportToFile = false, format = 'json') {
         try {
             updateBuffPool();
             const config = {
                 meta: {
                     version: "1.4",
                     save_time: new Date().toISOString(),
-                    tool_name: "鸣潮伤害分析与声骸词条对比工具"
+                    tool_name: "鸣潮伤害分析与声骸词条对比工具",
+                    save_type: exportToFile ? 'file' : 'local'
                 },
                 character: {
                     base_hp: document.getElementById('base_hp').value,
@@ -1715,28 +1740,49 @@ options: {
                 damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
             };
             
+            // 总是保存到本地存储（自动保存）
             localStorage.setItem('mingchao_damage_calc_v1.4', JSON.stringify(config));
-            alert('✅ 配置已保存到本地存储！');
+            
+            if (exportToFile) {
+                // 导出为文件
+                if (format === 'json') {
+                    exportToJSON(config);
+                } else if (format === 'xlsx') {
+                    exportToXLSX(config);
+                }
+                alert('✅ 配置已保存到本地存储并导出为文件！');
+            } else {
+                alert('✅ 配置已保存到本地存储！');
+            }
             return true;
         } catch (error) {
-            console.error('保存到本地存储失败:', error);
+            console.error('保存失败:', error);
             alert('❌ 保存失败: ' + error.message);
             return false;
         }
     }
 
-    function loadFromLocalStorage() {
+    // 统一的加载功能 - 支持从本地存储或文件加载
+    function loadConfig(fromFile = false) {
+        if (fromFile) {
+            // 触发文件选择
+            document.getElementById('csvImport').click();
+            return;
+        }
+        
+        // 从本地存储加载
         try {
             const saved = localStorage.getItem('mingchao_damage_calc_v1.4');
             if (!saved) {
-                alert('本地存储中没有找到保存的配置');
+                if (confirm('本地存储中没有找到保存的配置。是否从文件导入？')) {
+                    document.getElementById('csvImport').click();
+                }
                 return false;
             }
             
             const data = JSON.parse(saved);
             
             if (confirm('是否从本地存储加载上次保存的配置？\n\n版本: ' + (data.meta?.version || '未知') + '\n保存时间: ' + (data.meta?.save_time || '未知'))) {
-                // 直接调用importFromJSON来恢复配置
                 importFromJSON(data);
                 alert('✅ 配置已从本地存储加载！');
             }

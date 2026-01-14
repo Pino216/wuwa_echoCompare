@@ -12,24 +12,19 @@
 <div class="container">
     <div class="top-buttons">
         <div class="export-dropdown">
-            <button class="btn export-btn" style="background:linear-gradient(135deg, #4a6bff, #6a8bff);" onclick="toggleExportMenu()">
-                📤 导出方案 ▼
+            <button class="btn export-btn" style="background:linear-gradient(135deg, #4caf50, #66bb6a);" onclick="toggleExportMenu()">
+                💾 保存配置 ▼
             </button>
             <div class="export-menu" id="exportMenu" style="display:none;">
-                <a href="javascript:void(0)" onclick="selectExportFormat('json')">JSON格式（推荐备份）</a>
-                <a href="javascript:void(0)" onclick="selectExportFormat('xlsx')">Excel格式（.xlsx）</a>
+                <a href="javascript:void(0)" onclick="saveConfig(true, 'json')">保存并导出JSON文件</a>
+                <a href="javascript:void(0)" onclick="saveConfig(true, 'xlsx')">保存并导出Excel文件</a>
+                <a href="javascript:void(0)" onclick="saveConfig()">仅保存到本地存储</a>
             </div>
         </div>
-        <button class="btn" onclick="document.getElementById('csvImport').click()" style="background:linear-gradient(135deg, #ff6b8b, #ff8ba3);">
-            📥 导入方案
+        <button class="btn" onclick="loadConfig()" style="background:linear-gradient(135deg, #2196f3, #42a5f5);">
+            📂 加载配置
         </button>
         <input type="file" id="csvImport" style="display:none" onchange="importFullData(this)">
-        <button class="btn" onclick="saveToLocalStorage()" style="background:linear-gradient(135deg, #4caf50, #66bb6a);">
-            💾 保存到本地
-        </button>
-        <button class="btn" onclick="loadFromLocalStorage()" style="background:linear-gradient(135deg, #2196f3, #42a5f5);">
-            📂 从本地加载
-        </button>
         <button class="btn" onclick="location.reload()" style="background:linear-gradient(135deg, #ff9800, #ffb74d); margin-left:auto;">
             🔄 重置页面
         </button>
