@@ -111,9 +111,9 @@
                 const hoursDiff = (now - saveTime) / (1000 * 60 * 60);
                 
                 if (hoursDiff < 24) {
-                    // 24小时内的配置，静默加载
-                    importFromJSON(data);
-                    console.log('✅ 自动加载了上次保存的配置');
+                    // 24小时内的配置，静默加载，抑制计算
+                    importFromJSON(data, true);
+                    console.log('✅ 自动加载了上次保存的配置（抑制计算）');
                     return true;
                 }
             }
@@ -1185,7 +1185,7 @@ options: {
                 let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
                 for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
                 nameSelect += `</select>`;
-                row.innerHTML = nameSelect + `<select class="sub-val" onchange="calculate()"><option value="0">0</option></select>`;
+                row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)calculate(false)"><option value="0">0</option></select>`;
                 container.appendChild(row);
             }
         }
@@ -1210,7 +1210,7 @@ options: {
                     // 确保值被设置
                     valSelect.value = sub.val;
                     // 确保有onchange事件
-                    valSelect.setAttribute('onchange', 'calculate()');
+                    valSelect.setAttribute('onchange', 'if(sequence.length>0)calculate(false)');
                 }
             }
         });
@@ -1246,9 +1246,9 @@ options: {
                 `<option value="${t.id}" ${t.id === item.type ? 'selected' : ''}>${t.name}</option>`
             ).join('');
             const html = `<div class="static-bonus-item input-row">
-                <select class="s-type" onchange="calculate()">${options}</select>
-                <input type="number" class="s-val" value="${item.value}" style="width:40px" oninput="calculate()">%
-                <button onclick="this.parentElement.remove(); calculate();" style="color:var(--accent); background:none; border:none;">×</button>
+                <select class="s-type" onchange="if(sequence.length>0)calculate(false)">${options}</select>
+                <input type="number" class="s-val" value="${item.value}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
+                <button onclick="this.parentElement.remove(); if(sequence.length>0)calculate(false);" style="color:var(--accent); background:none; border:none;">×</button>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
@@ -1562,7 +1562,7 @@ options: {
     }
 
     // 从JSON数据导入
-    function importFromJSON(data) {
+    function importFromJSON(data, suppressCalculate = false) {
         // 验证数据格式和版本
         if (!data.meta || !data.meta.version) {
             throw new Error('无效的数据格式：缺少元数据');
@@ -1606,7 +1606,7 @@ options: {
                     <div class="buff-config" data-id="${buff.id}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
                         <div class="input-row">
                             <input type="text" class="b-name" value="${buff.name || '新Buff'}" style="width:80px" oninput="syncBuffNames('${buff.id}', this.value)">
-                            <select class="b-cat" onchange="calculate()">
+                            <select class="b-cat" onchange="if(sequence.length>0)calculate(false)">
                                 <option value="bonus" ${buff.cat === 'bonus' ? 'selected' : ''}>伤害加成</option>
                                 <option value="deepen" ${buff.cat === 'deepen' ? 'selected' : ''}>伤害加深</option>
                                 <option value="atk_pct" ${buff.cat === 'atk_pct' ? 'selected' : ''}>攻击%</option>
@@ -1617,9 +1617,9 @@ options: {
                             </select>
                         </div>
                         <div class="input-row">
-                            <select class="b-type" onchange="calculate()">${typeOptions}</select>
-                            <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="calculate()">%
-                            <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                            <select class="b-type" onchange="if(sequence.length>0)calculate(false)">${typeOptions}</select>
+                            <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
+                            <button onclick="this.parentElement.parentElement.remove(); renderSequence(); if(sequence.length>0)calculate(false);" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                         </div>
                     </div>`;
                 document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
@@ -1655,7 +1655,11 @@ options: {
         updateBuffPool();
         updateAllDamageTypeSelects();
         renderSequence();
-        calculate();
+        
+        // 只有在不抑制计算时才调用calculate
+        if (!suppressCalculate && sequence.length > 0) {
+            calculate(false);
+        }
     }
 
     // 从XLSX工作簿导入
