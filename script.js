@@ -462,12 +462,8 @@
             // Ctrl+R 重新计算
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
-                // 只有在序列不为空时才计算
-                if (sequence.length > 0) {
-                    calculate();
-                } else {
-                    alert('⚠️ 动作序列为空，请至少添加一个动作');
-                }
+                // 使用防抖计算，函数内部会检查序列是否为空
+                debouncedCalculate(0); // 0延迟，立即执行
             }
         });
 
