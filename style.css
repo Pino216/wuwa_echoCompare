@@ -293,24 +293,204 @@
             position: relative;
         }
 
-        /* 详细加成信息样式 */
-        #detailed_bonus_info {
+        /* 按钮样式 */
+        .export-btn-save {
+            background: linear-gradient(135deg, #4caf50, #66bb6a) !important;
+        }
+
+        .load-config-btn {
+            background: linear-gradient(135deg, #2196f3, #42a5f5) !important;
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #ff9800, #ffb74d) !important;
+            margin-left: auto;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+
+        /* 静态加成按钮区域 */
+        .static-bonus-buttons {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .add-static-bonus-btn {
+            font-size: 11px;
+            background: linear-gradient(135deg, #4a6bff, #6a8bff);
+            color: #fff;
+        }
+
+        .add-custom-type-btn {
+            font-size: 11px;
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            color: #fff;
+        }
+
+        .manage-custom-types-btn {
+            font-size: 11px;
+            background: linear-gradient(135deg, #ff6b8b, #ff8ba3);
+            color: #fff;
+        }
+
+        /* 新增Buff按钮 */
+        .add-new-buff-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4a6bff, #6a8bff);
+            color: #fff;
+        }
+
+        /* 添加动作容器 */
+        .add-action-container {
+            background: rgba(210, 180, 140, 0.15);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            border: 1px solid rgba(139, 69, 19, 0.3);
+        }
+
+        .add-action-title {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #8B4513;
+        }
+
+        .add-action-inputs {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .action-name-input {
+            width: 100px;
+            flex: 1;
+        }
+
+        .action-mult-input {
+            width: 80px;
+            flex: 1;
+        }
+
+        .action-type-select {
+            width: 90px;
+            flex: 1;
+        }
+
+        .action-scaling-select {
+            width: 90px;
+            flex: 1;
+        }
+
+        .add-action-btn {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #fff;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .add-action-tip {
+            font-size: 11px;
+            color: #8B4513;
+            margin-top: 8px;
+        }
+
+        /* 图表容器 */
+        .chart-container {
+            height: 280px;
             margin-top: 20px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(210, 180, 140, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(139, 69, 19, 0.3);
+        }
+
+        /* 伤害组成容器 */
+        .damage-composition-container {
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(139, 69, 19, 0.3);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* 声骸样式 */
+        .echo-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .echo-title {
+            margin-top: 0;
+        }
+
+        .echo-a-title {
+            color: #8B4513;
+        }
+
+        .echo-b-title {
+            color: #A0522D;
+        }
+
+        .echo-equipped {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .echo-checkbox {
+            width: 16px;
+            height: 16px;
+        }
+
+        .echo-checkbox-label {
+            font-size: 11px;
+            color: #8B4513;
+            cursor: pointer;
+        }
+
+        .echo-description {
+            font-size: 11px;
+            color: #8B4513;
+            margin-bottom: 8px;
+        }
+
+        .echo-b-description {
+            color: #A0522D;
+        }
+
+        .echo-tips {
+            font-size: 10px;
+            color: #8B4513;
+            margin-top: 8px;
+            padding: 6px;
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 4px;
+        }
+
+        /* 详细加成信息样式 */
+        .detailed-bonus-info {
+            display: none;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 12px;
             padding: 15px;
             border: 1px solid rgba(139, 69, 19, 0.3);
             max-height: 400px;
             overflow-y: auto;
-            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.1);
-            transition: all 0.3s ease;
         }
         
-        #detailed_bonus_info:hover {
+        .detailed-bonus-info:hover {
             box-shadow: 0 6px 20px rgba(139, 69, 19, 0.2);
         }
         
-        #detailed_bonus_info h3 {
+        .detailed-bonus-info h3 {
             color: #8B4513;
             margin-top: 0;
             font-size: 1.1em;
@@ -318,13 +498,13 @@
             padding-bottom: 5px;
         }
         
-        #detailed_bonus_info table {
+        .detailed-bonus-info table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
         
-        #detailed_bonus_info th {
+        .detailed-bonus-info th {
             background: rgba(139, 69, 19, 0.1);
             color: #8B4513;
             font-weight: 600;
@@ -334,13 +514,13 @@
             font-size: 11px;
         }
         
-        #detailed_bonus_info td {
+        .detailed-bonus-info td {
             padding: 6px;
             border-bottom: 1px solid rgba(139, 69, 19, 0.1);
             font-size: 11px;
         }
         
-        #detailed_bonus_info .buff-tag {
+        .detailed-bonus-info .buff-tag {
             background: rgba(139, 69, 19, 0.1);
             padding: 2px 6px;
             border-radius: 4px;
@@ -348,6 +528,16 @@
             font-size: 10px;
             margin: 2px;
             display: inline-block;
+        }
+
+        /* 对比结果样式 */
+        .compare-results {
+            background: rgba(210, 180, 140, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid rgba(139, 69, 19, 0.4);
+            max-height: 500px;
+            overflow-y: auto;
         }
         
         /* 管理面板中的按钮样式 */

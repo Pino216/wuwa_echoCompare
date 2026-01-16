@@ -12,20 +12,20 @@
 <div class="container">
     <div class="top-buttons">
         <div class="export-dropdown">
-            <button class="btn export-btn" style="background:linear-gradient(135deg, #4caf50, #66bb6a);" onclick="toggleExportMenu()">
+            <button class="btn export-btn export-btn-save" onclick="toggleExportMenu()">
                 💾 保存配置 ▼
             </button>
-            <div class="export-menu" id="exportMenu" style="display:none;">
+            <div class="export-menu" id="exportMenu">
                 <a href="javascript:void(0)" onclick="saveConfig(true, 'json')">保存并导出JSON文件</a>
                 <a href="javascript:void(0)" onclick="saveConfig(true, 'xlsx')">保存并导出Excel文件</a>
                 <a href="javascript:void(0)" onclick="saveConfig()">仅保存到本地存储</a>
             </div>
         </div>
-        <button class="btn" onclick="loadConfig()" style="background:linear-gradient(135deg, #2196f3, #42a5f5);">
+        <button class="btn load-config-btn" onclick="loadConfig()">
             📂 加载配置
         </button>
-        <input type="file" id="csvImport" style="display:none" onchange="importFullData(this)">
-        <button class="btn" onclick="location.reload()" style="background:linear-gradient(135deg, #ff9800, #ffb74d); margin-left:auto;">
+        <input type="file" id="csvImport" class="hidden-file-input" onchange="importFullData(this)">
+        <button class="btn reset-btn" onclick="location.reload()">
             🔄 重置页面
         </button>
     </div>
@@ -45,51 +45,51 @@
 
             <div style="margin-top:10px; border-top: 1px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <h3>面板固定伤害加成</h3>
-                <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #4a6bff, #6a8bff); color:#fff;" onclick="addStaticBonus()">+ 添加固定加成</button>
-                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #ff9800, #ffb74d); color:#fff;" onclick="addCustomDamageType()">+ 添加自定义类型</button>
-                    <button class="btn" style="font-size:11px; background:linear-gradient(135deg, #ff6b8b, #ff8ba3); color:#fff;" onclick="showCustomTypes()">📋 管理自定义类型</button>
+                <div class="static-bonus-buttons">
+                    <button class="btn add-static-bonus-btn" onclick="addStaticBonus()">+ 添加固定加成</button>
+                    <button class="btn add-custom-type-btn" onclick="addCustomDamageType()">+ 添加自定义类型</button>
+                    <button class="btn manage-custom-types-btn" onclick="showCustomTypes()">📋 管理自定义类型</button>
                 </div>
                 <div id="static_bonus_list"></div>
             </div>
 
             <h3>动态 Buff 轨道</h3>
             <div id="buff_pool"></div>
-            <button class="btn" style="width:100%; background:linear-gradient(135deg, #4a6bff, #6a8bff); color:#fff;" onclick="addNewBuff()">+ 新增 Buff (每页最多显示8个)</button>
+            <button class="btn add-new-buff-btn" onclick="addNewBuff()">+ 新增 Buff (每页最多显示8个)</button>
         </div>
 
         <div class="panel">
             <h2>2. 动作序列</h2>
             <div id="action_sequence" style="max-height: 450px; overflow-y: auto;"></div>
-            <div style="background: rgba(210, 180, 140, 0.15); padding: 15px; border-radius: 12px; margin-top:15px; border: 1px solid rgba(139, 69, 19, 0.3);">
-                <h3 style="margin-top:0; margin-bottom:10px; color:#8B4513;">添加新动作</h3>
-                <div class="input-row" style="flex-wrap:wrap; gap:8px;">
-                    <input type="text" id="act_name" placeholder="动作名称" style="width:100px; flex:1;">
-                    <input type="number" id="act_mult" placeholder="倍率 %" style="width:80px; flex:1;">
-                    <select id="act_type" style="width:90px; flex:1;">
+            <div class="add-action-container">
+                <h3 class="add-action-title">添加新动作</h3>
+                <div class="input-row add-action-inputs">
+                    <input type="text" id="act_name" placeholder="动作名称" class="action-name-input">
+                    <input type="number" id="act_mult" placeholder="倍率 %" class="action-mult-input">
+                    <select id="act_type" class="action-type-select">
                         <!-- 选项将通过JavaScript动态生成 -->
                     </select>
-                    <select id="act_scaling" style="width:90px; flex:1;">
+                    <select id="act_scaling" class="action-scaling-select">
                     <option value="atk">攻击力</option>
                     <option value="hp">生命值</option>
                     <option value="def">防御力</option></select>
-                    <button class="btn" style="background:linear-gradient(135deg, #8B4513, #A0522D); color:#fff; flex:1; min-width:100px;" onclick="addAction()">
+                    <button class="btn add-action-btn" onclick="addAction()">
                         ✚ 插入动作
                     </button>
                 </div>
-                <div style="font-size:11px; color:#8B4513; margin-top:8px;">
+                <div class="add-action-tip">
                     💡 提示：输入动作名称、倍率百分比并选择类型和基数
                 </div>
             </div>
             <button class="btn btn-calc" onclick="calculate()">
                 ⚡ 执行全量化分析
             </button>
-            <div style="height: 280px; margin-top:20px; background:rgba(210, 180, 140, 0.15); border-radius:12px; padding:15px; border:1px solid rgba(139, 69, 19, 0.3);">
+            <div class="chart-container">
                 <canvas id="dmgChart"></canvas>
             </div>
 
             <!-- 新增：伤害组成表格容器 -->
-            <div id="damageComposition" style="margin-top:20px; background:rgba(255, 255, 255, 0.9); border-radius:12px; padding:15px; border:1px solid rgba(139, 69, 19, 0.3); max-height: 300px; overflow-y: auto;">
+            <div id="damageComposition" class="damage-composition-container">
                 <!-- 伤害组成表格将在这里动态生成 -->
             </div>
         </div>
@@ -99,18 +99,18 @@
             <p style="font-size:11px; color:#8b949e;">设置两个声骸的词条，对比其对最终输出的影响</p>
 
             <div class="echo-box" id="echo_a">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                    <h3 style="margin-top:0; color:#8B4513">声骸 A</h3>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" id="echo_a_equipped" checked style="width: 16px; height: 16px;">
-                        <label for="echo_a_equipped" style="font-size: 11px; color:#8B4513; cursor: pointer;">已装备</label>
+                <div class="echo-header">
+                    <h3 class="echo-title echo-a-title">声骸 A</h3>
+                    <div class="echo-equipped">
+                        <input type="checkbox" id="echo_a_equipped" checked class="echo-checkbox">
+                        <label for="echo_a_equipped" class="echo-checkbox-label">已装备</label>
                     </div>
                 </div>
-                <div style="font-size:11px; color:#8B4513; margin-bottom:8px;">
+                <div class="echo-description">
                     副词条类型：普攻/重击/共鸣技能/共鸣解放/暴击/暴伤/攻击%/生命%/防御%等
                 </div>
                 <div class="substat-container"></div>
-                <div style="font-size:10px; color:#8B4513; margin-top:8px; padding:6px; background:rgba(139, 69, 19, 0.1); border-radius:4px;">
+                <div class="echo-tips">
                     ✓ 默认已装备在角色身上<br>
                     ✓ 取消勾选表示声骸A未装备<br>
                     ✓ 对比时：已装备 → 计算替换为B的伤害变化<br>
@@ -119,18 +119,18 @@
             </div>
 
             <div class="echo-box" id="echo_b">
-                <h3 style="margin-top:0; color:#A0522D">声骸 B</h3>
-                <div style="font-size:11px; color:#A0522D; margin-bottom:8px;">
+                <h3 class="echo-title echo-b-title">声骸 B</h3>
+                <div class="echo-description echo-b-description">
                     副词条类型：普攻/重击/共鸣技能/共鸣解放/暴击/暴伤/攻击%/生命%/防御%等
                 </div>
                 <div class="substat-container"></div>
             </div>
 
             <!-- 声骸B替换影响分析容器 -->
-            <div id="detailed_bonus_info" style="display: none; margin-top: 20px; background: rgba(255, 255, 255, 0.9); border-radius: 12px; padding: 15px; border: 1px solid rgba(139, 69, 19, 0.3); max-height: 400px; overflow-y: auto;">
+            <div id="detailed_bonus_info" class="detailed-bonus-info">
                 <!-- 声骸B替换声骸A的详细影响分析将在这里显示 -->
             </div>
-            <div id="compare_res" style="background:rgba(210, 180, 140, 0.2); padding:15px; border-radius:12px; border:2px solid rgba(139, 69, 19, 0.4); max-height: 500px; overflow-y: auto;">
+            <div id="compare_res" class="compare-results">
                 等待计算...
             </div>
         </div>
