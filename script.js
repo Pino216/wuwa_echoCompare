@@ -822,8 +822,8 @@ function runSim(extraSubs = []) {
     const totalAtkNow = parseFloat(document.getElementById('total_atk_now').value) || 0;
     const baseHp = parseFloat(document.getElementById('base_hp')?.value) || 0;
     const totalHpNow = parseFloat(document.getElementById('total_hp_now')?.value) || 0;
-    const baseDef = parseFloat(document.getElementById('base_def')?.value) || 0;
-    const totalDefNow = parseFloat(document.getElementById('total_def_now')?.value) || 0;
+    const baseDef = parseFloat(document.getElementById('base_def').value) || 0;
+    const totalDefNow = parseFloat(document.getElementById('total_def_now').value) || 0;
 
     const panelCr = parseFloat(document.getElementById('base_cr').value) / 100 || 0;
     const panelCd = parseFloat(document.getElementById('base_cd').value) / 100 || 0;
@@ -879,9 +879,12 @@ function runSim(extraSubs = []) {
         }
     });
     let totalDmg = 0;
+    
+    // 新增：收集每个动作的详细加成信息
+    let detailedInfo = [];
 
     // 4. 遍历动作序列计算
-    sequence.forEach(a => {
+    sequence.forEach((a, index) => {
         // 根据动作设定的基数(scaling)初始化基础值
         let baseStat = baseAtk;
         let currentTotalStat = totalAtkNow;
@@ -919,15 +922,38 @@ function runSim(extraSubs = []) {
             curFlatPct = curFlatValue / baseStat;
         }
 
+        // 记录初始值
+        const initialAttrPct = curAttrPct;
+        const initialBonus = curBonus - 1; // 减去基数1
+        const initialDeepen = curDeepen - 1; // 减去基数1
+        
+        // 记录应用的buff信息
+        let appliedBuffs = [];
+
         // 5. 应用动态 Buff
         a.activeBuffs.forEach(bid => {
             const b = buffPool.find(x => x.id === bid);
             if(b && (b.type === 'all' || b.type === a.type)) {
-                if(b.cat === 'bonus') curBonus += b.val;
-                else if(b.cat === 'deepen') curDeepen += b.val;
-                else if(b.cat === scalingAttrKey) curAttrPct += b.val; // 仅应用匹配基数的属性Buff
-                else if(b.cat === 'cr') curCr += b.val;
-                else if(b.cat === 'cd') curCd += b.val;
+                if(b.cat === 'bonus') {
+                    curBonus += b.val;
+                    appliedBuffs.push({name: b.name, type: '伤害加成', value: b.val * 100});
+                }
+                else if(b.cat === 'deepen') {
+                    curDeepen += b.val;
+                    appliedBuffs.push({name: b.name, type: '伤害加深', value: b.val * 100});
+                }
+                else if(b.cat === scalingAttrKey) {
+                    curAttrPct += b.val; // 仅应用匹配基数的属性Buff
+                    appliedBuffs.push({name: b.name, type: '属性加成', value: b.val * 100});
+                }
+                else if(b.cat === 'cr') {
+                    curCr += b.val;
+                    appliedBuffs.push({name: b.name, type: '暴击率', value: b.val * 100});
+                }
+                else if(b.cat === 'cd') {
+                    curCd += b.val;
+                    appliedBuffs.push({name: b.name, type: '暴击伤害', value: b.val * 100});
+                }
             }
         });
 
@@ -940,9 +966,28 @@ function runSim(extraSubs = []) {
 
         typeDmg[a.type] += dmg;
         totalDmg += dmg;
+        
+        // 收集详细加成信息
+        detailedInfo.push({
+            actionName: a.name,
+            actionIndex: index,
+            attrBonusPct: (curAttrPct - initialAttrPct) * 100, // 额外攻击力/生命/防御加成百分比
+            totalAttrBonusPct: curAttrPct * 100, // 总属性加成百分比
+            damageBonusPct: (curBonus - 1 - initialBonus) * 100, // 额外伤害加成百分比
+            totalDamageBonusPct: (curBonus - 1) * 100, // 总伤害加成百分比
+            damageDeepenPct: (curDeepen - 1 - initialDeepen) * 100, // 额外伤害加深百分比
+            totalDamageDeepenPct: (curDeepen - 1) * 100, // 总伤害加深百分比
+            appliedBuffs: appliedBuffs,
+            scalingType: a.scaling,
+            damageType: a.type
+        });
     });
 
-    return { totalDmg, typeDmg };
+    return { 
+        totalDmg, 
+        typeDmg,
+        detailedInfo  // 新增：返回详细加成信息
+    };
 }
 
 // --- 伤害组成表格显示 ---
@@ -1179,6 +1224,9 @@ function getColorForType(typeId) {
                 gainA, gainB, diff,
                 false
             );
+            
+            // 新增：显示详细加成信息（基于无任何声骸的情况）
+            displayDetailedBonusInfo(resBase.detailedInfo);
             return;
         }
 
@@ -1195,6 +1243,9 @@ function getColorForType(typeId) {
             0, gainB, gainB,
             true
         );
+        
+        // 新增：显示详细加成信息
+        displayDetailedBonusInfo(resBase.detailedInfo);
     }
 
     // 生成伤害变化分析表格
@@ -1455,6 +1506,150 @@ function getColorForType(typeId) {
             }
         });
         return details;
+    }
+
+    // 显示详细加成信息
+    function displayDetailedBonusInfo(detailedInfo) {
+        // 创建一个新的容器来显示加成信息
+        let bonusContainer = document.getElementById('detailed_bonus_info');
+        if (!bonusContainer) {
+            bonusContainer = document.createElement('div');
+            bonusContainer.id = 'detailed_bonus_info';
+            bonusContainer.style.cssText = `
+                margin-top: 20px;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 12px;
+                padding: 15px;
+                border: 1px solid rgba(139, 69, 19, 0.3);
+                max-height: 400px;
+                overflow-y: auto;
+            `;
+            // 插入到结果区域之前
+            const compareRes = document.getElementById('compare_res');
+            compareRes.parentNode.insertBefore(bonusContainer, compareRes);
+        }
+    
+        if (detailedInfo.length === 0) {
+            bonusContainer.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无加成信息</div>';
+            return;
+        }
+    
+        let html = `
+            <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
+                详细加成分析（基于当前装备的声骸A）
+            </h3>
+            <div style="font-size:11px; color:#8b949e; margin-bottom:10px;">
+                显示每个动作的额外攻击力/生命/防御加成、伤害加成、伤害加深百分比
+            </div>
+        `;
+    
+        // 为每个动作创建表格
+        detailedInfo.forEach(info => {
+            const damageTypeName = DAMAGE_TYPES.find(t => t.id === info.damageType)?.name || info.damageType;
+            const scalingName = {
+                'atk': '攻击力',
+                'hp': '生命值',
+                'def': '防御力'
+            }[info.scalingType] || info.scalingType;
+        
+            html += `
+                <div style="margin-bottom:15px; border:1px solid rgba(139, 69, 19, 0.2); border-radius:8px; padding:10px;">
+                    <div style="font-weight:bold; color:#8B4513; margin-bottom:8px;">
+                        ${info.actionName} (${damageTypeName}, 基于${scalingName})
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                        <thead>
+                            <tr style="background:rgba(139, 69, 19, 0.1);">
+                                <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">加成类型</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">额外加成</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">总加成</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding:6px;">${scalingName}加成</td>
+                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                    ${info.attrBonusPct > 0 ? '+' : ''}${info.attrBonusPct.toFixed(2)}%
+                                </td>
+                                <td style="padding:6px; text-align:right; color:#4a6bff;">
+                                    ${info.totalAttrBonusPct.toFixed(2)}%
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:6px;">伤害加成</td>
+                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
+                                    ${info.damageBonusPct > 0 ? '+' : ''}${info.damageBonusPct.toFixed(2)}%
+                                </td>
+                                <td style="padding:6px; text-align:right; color:#ff9800;">
+                                    ${info.totalDamageBonusPct.toFixed(2)}%
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:6px;">伤害加深</td>
+                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
+                                    ${info.damageDeepenPct > 0 ? '+' : ''}${info.damageDeepenPct.toFixed(2)}%
+                                </td>
+                                <td style="padding:6px; text-align:right; color:#4caf50;">
+                                    ${info.totalDamageDeepenPct.toFixed(2)}%
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+            `;
+        
+            // 显示应用的buff信息
+            if (info.appliedBuffs.length > 0) {
+                html += `
+                    <div style="margin-top:8px; font-size:10px; color:#8b949e;">
+                        <div>应用的Buff：</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                `;
+                info.appliedBuffs.forEach(buff => {
+                    html += `
+                        <span style="background:rgba(139, 69, 19, 0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(139, 69, 19, 0.2);">
+                            ${buff.name} (${buff.type}+${buff.value.toFixed(1)}%)
+                        </span>
+                    `;
+                });
+                html += `
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="margin-top:8px; font-size:10px; color:#8b949e;">
+                        未应用任何动态Buff
+                    </div>
+                `;
+            }
+        
+            html += `</div>`;
+        });
+    
+        // 添加总计信息
+        const totalAttrBonus = detailedInfo.reduce((sum, info) => sum + info.attrBonusPct, 0);
+        const totalDamageBonus = detailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
+        const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
+    
+        html += `
+            <div style="margin-top:15px; border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
+                <div style="font-weight:bold; color:#8B4513; margin-bottom:5px;">总计额外加成（所有动作平均）</div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                    <span>平均${scalingName}加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${(totalAttrBonus / detailedInfo.length).toFixed(2)}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                    <span>平均伤害加成：</span>
+                    <span style="color:#ff9800; font-weight:bold;">${(totalDamageBonus / detailedInfo.length).toFixed(2)}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                    <span>平均伤害加深：</span>
+                    <span style="color:#4caf50; font-weight:bold;">${(totalDamageDeepen / detailedInfo.length).toFixed(2)}%</span>
+                </div>
+            </div>
+        `;
+    
+        bonusContainer.innerHTML = html;
     }
 
     // 获取词条名称
