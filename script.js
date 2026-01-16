@@ -1718,13 +1718,34 @@ function getColorForType(typeId) {
             html += `</div>`;
         });
 
-        // 添加总计信息
-        const totalAttrBonus = detailedInfo.reduce((sum, info) => sum + info.attrBonusPct, 0);
+        // 添加总计信息 - 分别统计不同基数的属性加成
+        // 分别统计攻击、生命、防御的加成
+        let totalAtkBonus = 0;
+        let totalHpBonus = 0;
+        let totalDefBonus = 0;
+        let atkCount = 0, hpCount = 0, defCount = 0;
+        
         const totalDamageBonus = detailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
         const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
     
+        // 分别统计不同基数的属性加成
+        detailedInfo.forEach(info => {
+            if (info.scalingType === 'atk') {
+                totalAtkBonus += info.attrBonusPct;
+                atkCount++;
+            } else if (info.scalingType === 'hp') {
+                totalHpBonus += info.attrBonusPct;
+                hpCount++;
+            } else if (info.scalingType === 'def') {
+                totalDefBonus += info.attrBonusPct;
+                defCount++;
+            }
+        });
+    
         // 计算平均实际倍率
-        const avgAttrMultiplier = 1 + (totalAttrBonus / detailedInfo.length) / 100;
+        const avgAtkMultiplier = atkCount > 0 ? 1 + (totalAtkBonus / atkCount) / 100 : 1;
+        const avgHpMultiplier = hpCount > 0 ? 1 + (totalHpBonus / hpCount) / 100 : 1;
+        const avgDefMultiplier = defCount > 0 ? 1 + (totalDefBonus / defCount) / 100 : 1;
         const avgDamageBonusMultiplier = 1 + (totalDamageBonus / detailedInfo.length) / 100;
         const avgDamageDeepenMultiplier = 1 + (totalDamageDeepen / detailedInfo.length) / 100;
     
@@ -1736,10 +1757,35 @@ function getColorForType(typeId) {
         html += `
             <div style="margin-top:15px; border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <div style="font-weight:bold; color:#8B4513; margin-bottom:5px;">总计加成（所有动作平均）</div>
+        `;
+        
+        // 显示不同基数的属性加成
+        if (atkCount > 0) {
+            html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均属性加成：</span>
-                    <span style="color:#4a6bff; font-weight:bold;">${(totalAttrBonus / detailedInfo.length).toFixed(2)}% (${avgAttrMultiplier.toFixed(3)}倍)</span>
+                    <span>平均攻击加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${(totalAtkBonus / atkCount).toFixed(2)}% (${avgAtkMultiplier.toFixed(3)}倍)</span>
                 </div>
+            `;
+        }
+        if (hpCount > 0) {
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span>平均生命加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${(totalHpBonus / hpCount).toFixed(2)}% (${avgHpMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+        }
+        if (defCount > 0) {
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span>平均防御加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${(totalDefBonus / defCount).toFixed(2)}% (${avgDefMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+        }
+        
+        html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                     <span>平均伤害加成：</span>
                     <span style="color:#ff9800; font-weight:bold;">${(totalDamageBonus / detailedInfo.length).toFixed(2)}% (${avgDamageBonusMultiplier.toFixed(3)}倍)</span>
@@ -1762,7 +1808,8 @@ function getColorForType(typeId) {
                 </div>
                 <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(139, 69, 19, 0.2); font-size:11px; color:#8b949e;">
                     💡 实际倍率 = 1 + 总加成百分比/100。例如：50%加成 = 1.5倍<br>
-                    💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)
+                    💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)<br>
+                    💡 属性加成按基数类型（攻击/生命/防御）分别统计
                 </div>
             </div>
             </div>
