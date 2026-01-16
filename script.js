@@ -1216,16 +1216,56 @@ function updateDamageComposition(typeDmg) {
     const container = document.getElementById('damageComposition');
     if (!container) return;
     
-    // 计算总伤害
-    const total = Object.values(typeDmg).reduce((a, b) => a + b, 0);
+    // 计算总伤害 - 包括所有伤害类型（包括自定义类型）
+    // 首先，我们需要收集所有伤害类型的伤害值
+    let total = 0;
     
-    // 过滤掉伤害为0的类型
-    const damageTypesForTable = DAMAGE_TYPES.filter(t => t.id !== 'all' && (typeDmg[t.id] || 0) > 0);
+    // 收集所有伤害类型（包括自定义类型）的伤害值
+    const allDamageEntries = [];
+    
+    // 处理默认伤害类型
+    DAMAGE_TYPES.forEach(type => {
+        if (type.id !== 'all') {
+            const damage = typeDmg[type.id] || 0;
+            if (damage > 0) {
+                allDamageEntries.push({
+                    id: type.id,
+                    name: type.name,
+                    damage: damage
+                });
+                total += damage;
+            }
+        }
+    });
+    
+    // 另外，还需要检查typeDmg中是否有DAMAGE_TYPES中没有包含的自定义类型
+    // 这可能在导入时发生，自定义类型被添加到typeDmg但还没有添加到DAMAGE_TYPES
+    for (const typeId in typeDmg) {
+        if (typeId !== 'all') {
+            const damage = typeDmg[typeId];
+            if (damage > 0) {
+                // 检查这个类型是否已经在allDamageEntries中
+                const existingEntry = allDamageEntries.find(entry => entry.id === typeId);
+                if (!existingEntry) {
+                    // 查找类型名称
+                    const typeInfo = DAMAGE_TYPES.find(t => t.id === typeId);
+                    const typeName = typeInfo ? typeInfo.name : `自定义类型(${typeId})`;
+                    
+                    allDamageEntries.push({
+                        id: typeId,
+                        name: typeName,
+                        damage: damage
+                    });
+                    total += damage;
+                }
+            }
+        }
+    }
     
     // 按伤害值降序排序
-    damageTypesForTable.sort((a, b) => (typeDmg[b.id] || 0) - (typeDmg[a.id] || 0));
+    allDamageEntries.sort((a, b) => b.damage - a.damage);
     
-    if (damageTypesForTable.length === 0) {
+    if (allDamageEntries.length === 0) {
         container.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
         return;
     }
@@ -1248,8 +1288,8 @@ function updateDamageComposition(typeDmg) {
     `;
     
     let cumulativePercentage = 0;
-    damageTypesForTable.forEach((type, index) => {
-        const damage = typeDmg[type.id] || 0;
+    allDamageEntries.forEach((entry, index) => {
+        const damage = entry.damage;
         const percentage = total > 0 ? (damage / total * 100) : 0;
         cumulativePercentage += percentage;
         
@@ -1259,8 +1299,8 @@ function updateDamageComposition(typeDmg) {
         html += `
             <tr style="background:${rowBg};">
                 <td style="padding:8px; border-bottom:1px solid rgba(139, 69, 19, 0.1);">
-                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:${getColorForType(type.id)};"></span>
-                    ${type.name}
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:${getColorForType(entry.id)};"></span>
+                    ${entry.name}
                 </td>
                 <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.1); font-weight:bold;">
                     ${damage.toFixed(0)}
@@ -2154,11 +2194,46 @@ function updateChart(typeDmg) {
     // 计算总伤害，用于计算百分比
     const total = Object.values(typeDmg).reduce((a, b) => a + b, 0);
     
-    // 创建标签和数据值的映射
-    // 我们需要按照DAMAGE_TYPES的顺序来组织，但排除'all'类型
-    const damageTypesForChart = DAMAGE_TYPES.filter(t => t.id !== 'all');
-    const labels = damageTypesForChart.map(t => t.name);
-    const dataValues = damageTypesForChart.map(t => typeDmg[t.id] || 0);
+    // 收集所有有伤害值的类型，包括自定义类型
+    const allDamageEntries = [];
+    
+    // 首先从DAMAGE_TYPES中获取
+    DAMAGE_TYPES.forEach(type => {
+        if (type.id !== 'all') {
+            const damage = typeDmg[type.id] || 0;
+            if (damage > 0) {
+                allDamageEntries.push({
+                    id: type.id,
+                    name: type.name,
+                    damage: damage
+                });
+            }
+        }
+    });
+    
+    // 检查typeDmg中是否有不在DAMAGE_TYPES中的类型
+    for (const typeId in typeDmg) {
+        if (typeId !== 'all' && typeDmg[typeId] > 0) {
+            const existingEntry = allDamageEntries.find(entry => entry.id === typeId);
+            if (!existingEntry) {
+                // 查找类型名称
+                const typeInfo = DAMAGE_TYPES.find(t => t.id === typeId);
+                const typeName = typeInfo ? typeInfo.name : `自定义类型(${typeId})`;
+                
+                allDamageEntries.push({
+                    id: typeId,
+                    name: typeName,
+                    damage: typeDmg[typeId]
+                });
+            }
+        }
+    }
+    
+    // 按伤害值降序排序
+    allDamageEntries.sort((a, b) => b.damage - a.damage);
+    
+    const labels = allDamageEntries.map(entry => entry.name);
+    const dataValues = allDamageEntries.map(entry => entry.damage);
 
     // 生成足够的颜色
     const colorPalette = [
@@ -2179,49 +2254,49 @@ function updateChart(typeDmg) {
                 borderWidth: 0
             }]
         },
-options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'right',
-            labels: {
-                color: '#ff9800', // 改为橙色
-                font: { size: 12, weight: 'bold' },
-                generateLabels: function(chart) {
-                    const data = chart.data;
-                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                    if (data.labels.length && data.datasets.length) {
-                        return data.labels.map((label, i) => {
-                            const value = data.datasets[0].data[i];
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
-                            return {
-                                text: `${label}: ${percentage}%`,
-                                fillStyle: data.datasets[0].backgroundColor[i],
-                                fontColor: '#ff9800', // 改为橙色
-                                color: '#ff9800', // 改为橙色
-                                hidden: isNaN(data.datasets[0].data[i]) || chart.getDatasetMeta(0).data[i].hidden,
-                                index: i
-                            };
-                        });
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#ff9800',
+                        font: { size: 12, weight: 'bold' },
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            if (data.labels.length && data.datasets.length) {
+                                return data.labels.map((label, i) => {
+                                    const value = data.datasets[0].data[i];
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+                                    return {
+                                        text: `${label}: ${percentage}%`,
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        fontColor: '#ff9800',
+                                        color: '#ff9800',
+                                        hidden: isNaN(data.datasets[0].data[i]) || chart.getDatasetMeta(0).data[i].hidden,
+                                        index: i
+                                    };
+                                });
+                            }
+                            return [];
+                        }
                     }
-                    return [];
-                }
-            }
-        },
-        tooltip: {
-            titleColor: '#ff9800', // 工具提示标题也改为橙色
-            bodyColor: '#ffffff',
-            callbacks: {
-                label: function(context) {
-                    const value = context.raw;
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                    return `伤害: ${value.toFixed(0)} (${percentage}%)`;
+                },
+                tooltip: {
+                    titleColor: '#ff9800',
+                    bodyColor: '#ffffff',
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `伤害: ${value.toFixed(0)} (${percentage}%)`;
+                        }
+                    }
                 }
             }
         }
-    }
-}
     });
 }
 
