@@ -2539,20 +2539,268 @@ options: {
             const ws7 = XLSX.utils.aoa_to_sheet(echoComparisonData);
             XLSX.utils.book_append_sheet(wb, ws7, "声骸对比");
             
-            // 9. 详细计算过程工作表
+            // 9. 详细计算过程工作表（基于声骸A）
             const ws8 = XLSX.utils.aoa_to_sheet(detailedCalculationData);
-            XLSX.utils.book_append_sheet(wb, ws8, "详细计算过程");
+            XLSX.utils.book_append_sheet(wb, ws8, "详细计算过程(声骸A)");
             
-            // 10. 元数据工作表
+            // 10. 声骸对比详细计算过程工作表
+            let echoComparisonDetailedData = [];
+            
+            if (config.sequence && config.sequence.length > 0) {
+                // 保存当前状态
+                const originalSequence = sequence;
+                const originalBuffPool = buffPool;
+                
+                // 临时设置状态以进行计算
+                sequence = config.sequence;
+                buffPool = config.buffs;
+                
+                // 获取声骸词条
+                const echoASubs = config.echoes.echo_a;
+                const echoBSubs = config.echoes.echo_b;
+                
+                // 检查是否已装备声骸A
+                const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
+                
+                if (isEchoAEquipped) {
+                    // 声骸A已装备：基础伤害已经包含声骸A的词条
+                    const resBase = runSim([], []);
+                    const resB = runSim(echoBSubs, echoASubs);
+                    
+                    // 准备详细对比数据
+                    echoComparisonDetailedData.push(["声骸对比详细计算过程（声骸A vs 声骸B）"]);
+                    echoComparisonDetailedData.push([]);
+                    echoComparisonDetailedData.push(["动作名称", "伤害类型", "基数类型", 
+                                                     "声骸A总属性加成%", "声骸B总属性加成%", "属性加成变化%",
+                                                     "声骸A伤害加成%", "声骸B伤害加成%", "伤害加成变化%",
+                                                     "声骸A伤害加深%", "声骸B伤害加深%", "伤害加深变化%",
+                                                     "声骸A暴击率%", "声骸B暴击率%", "暴击率变化%",
+                                                     "声骸A暴击伤害%", "声骸B暴击伤害%", "暴击伤害变化%",
+                                                     "声骸A暴击期望倍率", "声骸B暴击期望倍率", "暴击期望变化",
+                                                     "声骸A最终属性值", "声骸B最终属性值", "属性值变化",
+                                                     "声骸A基础伤害", "声骸B基础伤害", "基础伤害变化",
+                                                     "声骸A暴击期望伤害", "声骸B暴击期望伤害", "伤害变化"]);
+                    
+                    // 遍历每个动作的详细信息
+                    for (let i = 0; i < resBase.detailedInfo.length; i++) {
+                        const infoA = resBase.detailedInfo[i];
+                        const infoB = resB.detailedInfo[i];
+                        
+                        const damageTypeName = DAMAGE_TYPES.find(t => t.id === infoA.damageType)?.name || infoA.damageType;
+                        const scalingName = {
+                            'atk': '攻击力',
+                            'hp': '生命值',
+                            'def': '防御力'
+                        }[infoA.scalingType] || infoA.scalingType;
+                        
+                        // 计算总属性加成百分比
+                        const totalAttrPctA = (infoA.panelExistingPct || 0) + infoA.totalAttrBonusPct;
+                        const totalAttrPctB = (infoB.panelExistingPct || 0) + infoB.totalAttrBonusPct;
+                        const attrChange = totalAttrPctB - totalAttrPctA;
+                        
+                        // 伤害加成变化
+                        const damageBonusChange = infoB.totalDamageBonusPct - infoA.totalDamageBonusPct;
+                        // 伤害加深变化
+                        const damageDeepenChange = infoB.totalDamageDeepenPct - infoA.totalDamageDeepenPct;
+                        // 暴击率变化
+                        const critRateChange = infoB.critRate - infoA.critRate;
+                        // 暴击伤害变化
+                        const critDamageChange = infoB.critDamage - infoA.critDamage;
+                        // 暴击期望倍率变化
+                        const critMultiplierChange = infoB.critMultiplier - infoA.critMultiplier;
+                        
+                        // 最终属性值变化
+                        const finalScalingValueA = infoA.finalScalingValue || 0;
+                        const finalScalingValueB = infoB.finalScalingValue || 0;
+                        const scalingValueChange = finalScalingValueB - finalScalingValueA;
+                        
+                        // 从序列中获取动作倍率
+                        const action = config.sequence[infoA.actionIndex];
+                        const actionMult = action.mult;
+                        
+                        // 计算基础伤害（未考虑暴击）
+                        const baseDamageA = finalScalingValueA * actionMult;
+                        const baseDamageB = finalScalingValueB * actionMult;
+                        const baseDamageChange = baseDamageB - baseDamageA;
+                        
+                        // 计算暴击期望伤害
+                        const critExpDamageA = baseDamageA * infoA.critMultiplier;
+                        const critExpDamageB = baseDamageB * infoB.critMultiplier;
+                        const critExpDamageChange = critExpDamageB - critExpDamageA;
+                        
+                        echoComparisonDetailedData.push([
+                            infoA.actionName,
+                            damageTypeName,
+                            scalingName,
+                            totalAttrPctA.toFixed(2),
+                            totalAttrPctB.toFixed(2),
+                            attrChange.toFixed(2),
+                            infoA.totalDamageBonusPct.toFixed(2),
+                            infoB.totalDamageBonusPct.toFixed(2),
+                            damageBonusChange.toFixed(2),
+                            infoA.totalDamageDeepenPct.toFixed(2),
+                            infoB.totalDamageDeepenPct.toFixed(2),
+                            damageDeepenChange.toFixed(2),
+                            infoA.critRate.toFixed(1),
+                            infoB.critRate.toFixed(1),
+                            critRateChange.toFixed(1),
+                            infoA.critDamage.toFixed(1),
+                            infoB.critDamage.toFixed(1),
+                            critDamageChange.toFixed(1),
+                            infoA.critMultiplier.toFixed(3),
+                            infoB.critMultiplier.toFixed(3),
+                            critMultiplierChange.toFixed(3),
+                            finalScalingValueA.toFixed(0),
+                            finalScalingValueB.toFixed(0),
+                            scalingValueChange.toFixed(0),
+                            baseDamageA.toFixed(0),
+                            baseDamageB.toFixed(0),
+                            baseDamageChange.toFixed(0),
+                            critExpDamageA.toFixed(0),
+                            critExpDamageB.toFixed(0),
+                            critExpDamageChange.toFixed(0)
+                        ]);
+                    }
+                    
+                    // 添加总计行
+                    echoComparisonDetailedData.push([]);
+                    echoComparisonDetailedData.push(["总计", "", "", 
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        resBase.totalDmg.toFixed(0), resB.totalDmg.toFixed(0), 
+                        (resB.totalDmg - resBase.totalDmg).toFixed(0)]);
+                    
+                } else {
+                    // 声骸A未装备
+                    const resBase = runSim([], []);
+                    const resA = runSim(echoASubs, []);
+                    const resB = runSim(echoBSubs, []);
+                    
+                    echoComparisonDetailedData.push(["声骸对比详细计算过程（无声骸 vs 声骸A vs 声骸B）"]);
+                    echoComparisonDetailedData.push([]);
+                    echoComparisonDetailedData.push(["动作名称", "伤害类型", "基数类型", 
+                                                     "无声骸总属性加成%", "声骸A总属性加成%", "声骸B总属性加成%",
+                                                     "无声骸伤害加成%", "声骸A伤害加成%", "声骸B伤害加成%",
+                                                     "无声骸伤害加深%", "声骸A伤害加深%", "声骸B伤害加深%",
+                                                     "无声骸暴击率%", "声骸A暴击率%", "声骸B暴击率%",
+                                                     "无声骸暴击伤害%", "声骸A暴击伤害%", "声骸B暴击伤害%",
+                                                     "无声骸暴击期望倍率", "声骸A暴击期望倍率", "声骸B暴击期望倍率",
+                                                     "无声骸最终属性值", "声骸A最终属性值", "声骸B最终属性值",
+                                                     "无声骸基础伤害", "声骸A基础伤害", "声骸B基础伤害",
+                                                     "无声骸暴击期望伤害", "声骸A暴击期望伤害", "声骸B暴击期望伤害"]);
+                    
+                    // 遍历每个动作的详细信息
+                    for (let i = 0; i < resBase.detailedInfo.length; i++) {
+                        const infoBase = resBase.detailedInfo[i];
+                        const infoA = resA.detailedInfo[i];
+                        const infoB = resB.detailedInfo[i];
+                        
+                        const damageTypeName = DAMAGE_TYPES.find(t => t.id === infoBase.damageType)?.name || infoBase.damageType;
+                        const scalingName = {
+                            'atk': '攻击力',
+                            'hp': '生命值',
+                            'def': '防御力'
+                        }[infoBase.scalingType] || infoBase.scalingType;
+                        
+                        // 计算总属性加成百分比
+                        const totalAttrPctBase = (infoBase.panelExistingPct || 0) + infoBase.totalAttrBonusPct;
+                        const totalAttrPctA = (infoA.panelExistingPct || 0) + infoA.totalAttrBonusPct;
+                        const totalAttrPctB = (infoB.panelExistingPct || 0) + infoB.totalAttrBonusPct;
+                        
+                        // 从序列中获取动作倍率
+                        const action = config.sequence[infoBase.actionIndex];
+                        const actionMult = action.mult;
+                        
+                        // 最终属性值
+                        const finalScalingValueBase = infoBase.finalScalingValue || 0;
+                        const finalScalingValueA = infoA.finalScalingValue || 0;
+                        const finalScalingValueB = infoB.finalScalingValue || 0;
+                        
+                        // 计算基础伤害（未考虑暴击）
+                        const baseDamageBase = finalScalingValueBase * actionMult;
+                        const baseDamageA = finalScalingValueA * actionMult;
+                        const baseDamageB = finalScalingValueB * actionMult;
+                        
+                        // 计算暴击期望伤害
+                        const critExpDamageBase = baseDamageBase * infoBase.critMultiplier;
+                        const critExpDamageA = baseDamageA * infoA.critMultiplier;
+                        const critExpDamageB = baseDamageB * infoB.critMultiplier;
+                        
+                        echoComparisonDetailedData.push([
+                            infoBase.actionName,
+                            damageTypeName,
+                            scalingName,
+                            totalAttrPctBase.toFixed(2),
+                            totalAttrPctA.toFixed(2),
+                            totalAttrPctB.toFixed(2),
+                            infoBase.totalDamageBonusPct.toFixed(2),
+                            infoA.totalDamageBonusPct.toFixed(2),
+                            infoB.totalDamageBonusPct.toFixed(2),
+                            infoBase.totalDamageDeepenPct.toFixed(2),
+                            infoA.totalDamageDeepenPct.toFixed(2),
+                            infoB.totalDamageDeepenPct.toFixed(2),
+                            infoBase.critRate.toFixed(1),
+                            infoA.critRate.toFixed(1),
+                            infoB.critRate.toFixed(1),
+                            infoBase.critDamage.toFixed(1),
+                            infoA.critDamage.toFixed(1),
+                            infoB.critDamage.toFixed(1),
+                            infoBase.critMultiplier.toFixed(3),
+                            infoA.critMultiplier.toFixed(3),
+                            infoB.critMultiplier.toFixed(3),
+                            finalScalingValueBase.toFixed(0),
+                            finalScalingValueA.toFixed(0),
+                            finalScalingValueB.toFixed(0),
+                            baseDamageBase.toFixed(0),
+                            baseDamageA.toFixed(0),
+                            baseDamageB.toFixed(0),
+                            critExpDamageBase.toFixed(0),
+                            critExpDamageA.toFixed(0),
+                            critExpDamageB.toFixed(0)
+                        ]);
+                    }
+                    
+                    // 添加总计行
+                    echoComparisonDetailedData.push([]);
+                    echoComparisonDetailedData.push(["总计", "", "", 
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        "", "", "",
+                        resBase.totalDmg.toFixed(0), resA.totalDmg.toFixed(0), resB.totalDmg.toFixed(0)]);
+                }
+                
+                // 恢复原始状态
+                sequence = originalSequence;
+                buffPool = originalBuffPool;
+            } else {
+                echoComparisonDetailedData.push(["提示", "动作序列为空，无法计算声骸对比详细过程"]);
+            }
+            
+            // 11. 声骸对比详细计算过程工作表
+            const ws9 = XLSX.utils.aoa_to_sheet(echoComparisonDetailedData);
+            XLSX.utils.book_append_sheet(wb, ws9, "声骸对比详细计算");
+            
+            // 12. 元数据工作表
             const metaData = [
                 ["导出工具", config.meta.tool_name],
                 ["版本", config.meta.version],
                 ["导出时间", config.meta.export_time],
-                ["数据版本", "3"],
-                ["备注", "鸣潮伤害分析工具导出数据（包含详细计算过程）"]
+                ["数据版本", "4"],
+                ["备注", "鸣潮伤害分析工具导出数据（包含详细计算过程和声骸对比详细计算）"]
             ];
-            const ws9 = XLSX.utils.aoa_to_sheet(metaData);
-            XLSX.utils.book_append_sheet(wb, ws9, "元数据");
+            const ws10 = XLSX.utils.aoa_to_sheet(metaData);
+            XLSX.utils.book_append_sheet(wb, ws10, "元数据");
             
             // 生成并下载文件
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
