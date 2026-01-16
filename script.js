@@ -134,7 +134,7 @@
                                 font-size:11px;
                                 margin-right:5px;
                             ">编辑</button>
-                            <button onclick="confirmDelete('确定要删除自定义伤害类型"${t.name}"吗？\\n\\n注意：删除后，使用此类型的配置将恢复为默认类型。', () => removeCustomDamageType('${t.id}'))" style="
+                            <button onclick="confirmDeleteCustomType('${t.id}', '${t.name.replace(/'/g, "\\'")}')" style="
                                 background:linear-gradient(135deg, #ff6b8b, #ff8ba3);
                                 color:white;
                                 border:none;
@@ -2238,6 +2238,12 @@ options: {
     function exportFullData() {
         // 默认导出JSON格式，以保持向后兼容性
         exportToJSON();
+    }
+
+    // 确认删除自定义类型的函数
+    function confirmDeleteCustomType(typeId, typeName) {
+        const message = `确定要删除自定义伤害类型"${typeName}"吗？\n\n注意：删除后，使用此类型的配置将恢复为默认类型。`;
+        confirmDelete(message, () => removeCustomDamageType(typeId));
     }
 
     // 确认删除函数，支持"不再提示"选项
