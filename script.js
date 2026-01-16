@@ -429,20 +429,16 @@
         const echoACheckbox = document.getElementById('echo_a_equipped');
         if (echoACheckbox) {
             echoACheckbox.addEventListener('change', function() {
-                // 只有在序列不为空时才计算
-                if (sequence.length > 0) {
-                    debouncedCalculate();
-                }
+                // 使用防抖计算，函数内部会检查序列是否为空
+                debouncedCalculate();
             });
         }
 
         // 为所有现有的声骸数值选择器添加事件监听器
         document.querySelectorAll('.sub-val').forEach(select => {
             select.addEventListener('change', function() {
-                // 只有在序列不为空时才计算
-                if (sequence.length > 0) {
-                    debouncedCalculate();
-                }
+                // 使用防抖计算，函数内部会检查序列是否为空
+                debouncedCalculate();
             });
         });
 
@@ -631,7 +627,10 @@
         valSelect.innerHTML = data.values.map(v => `<option value="${v}">${v}${data.isPct?'%':''}</option>`).join('');
         // 添加onchange事件到新创建的选项
         valSelect.setAttribute('onchange', 'debouncedCalculate()');
-        debouncedCalculate();
+        // 只有在序列不为空时才触发计算
+        if (sequence.length > 0) {
+            debouncedCalculate();
+        }
     }
 
     // 分页相关变量
@@ -799,7 +798,7 @@ function addAction() {
     });
 
     renderSequence();
-    // 添加动作后立即计算（关键操作）
+    // 添加动作后立即计算（关键操作，函数内部会检查序列是否为空）
     immediateCalculate();
 }
 
@@ -853,6 +852,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].name = newName;
             renderSequence();
+            // 使用防抖计算，函数内部会检查序列是否为空
             debouncedCalculate();
         }
     }
@@ -861,6 +861,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].mult = parseFloat(newMult) / 100;
             renderSequence();
+            // 使用防抖计算，函数内部会检查序列是否为空
             debouncedCalculate();
         }
     }
@@ -869,6 +870,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].type = newType;
             renderSequence();
+            // 使用防抖计算，函数内部会检查序列是否为空
             debouncedCalculate();
         }
     }
@@ -877,6 +879,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].scaling = newScaling;
             renderSequence();
+            // 使用防抖计算，函数内部会检查序列是否为空
             debouncedCalculate();
         }
     }
@@ -886,7 +889,8 @@ function addAction() {
         if(bIdx > -1) sequence[actIdx].activeBuffs.splice(bIdx, 1);
         else sequence[actIdx].activeBuffs.push(buffId);
         renderSequence();
-        immediateCalculate(); // 关键操作，立即计算
+        // 关键操作，立即计算（函数内部会检查序列是否为空）
+        immediateCalculate();
     }
 
     // 防抖计时器
@@ -897,11 +901,20 @@ function addAction() {
         // 清除之前的定时器
         clearTimeout(debounceTimer);
         
+        // 检查序列是否为空
+        if (sequence.length === 0) {
+            // 序列为空时，不进行计算，只更新UI状态
+            updateEmptyState();
+            return;
+        }
+        
         // 设置新的定时器
         debounceTimer = setTimeout(() => {
-            // 只有在序列不为空时才计算
+            // 再次检查序列是否为空（可能在延迟期间被清空）
             if (sequence.length > 0) {
                 calculate();
+            } else {
+                updateEmptyState();
             }
         }, delay);
     }
@@ -911,7 +924,25 @@ function addAction() {
         clearTimeout(debounceTimer);
         if (sequence.length > 0) {
             calculate();
+        } else {
+            updateEmptyState();
         }
+    }
+    
+    // 更新空状态UI
+    function updateEmptyState() {
+        // 清空结果显示区域
+        document.getElementById('compare_res').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">请添加动作序列后点击"执行全量化分析"</div>';
+        // 隐藏详细加成信息
+        const bonusContainer = document.getElementById('detailed_bonus_info');
+        if (bonusContainer) {
+            bonusContainer.style.display = 'none';
+        }
+        // 清空图表
+        const ctx = document.getElementById('dmgChart').getContext('2d');
+        if (dmgChart) dmgChart.destroy();
+        // 清空伤害组成表格
+        document.getElementById('damageComposition').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
     }
     
     // --- 计算逻辑 ---
@@ -2165,7 +2196,10 @@ options: {
             <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); debouncedCalculate(); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
         </div>`;
         document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
-        debouncedCalculate();
+        // 只有在序列不为空时才触发计算
+        if (sequence.length > 0) {
+            debouncedCalculate();
+        }
     }
 
     // 获取声骸配置的辅助函数
