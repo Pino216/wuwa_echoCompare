@@ -180,10 +180,12 @@
             </div>
         `;
     
+        panel.setAttribute('data-custom-types-panel', 'true');
         panel.innerHTML = html;
     
-        // 添加遮罩层
+        // 添加遮罩层，添加自定义属性以便更容易识别
         const overlay = document.createElement('div');
+        overlay.setAttribute('data-custom-types-overlay', 'true');
         overlay.style.cssText = `
             position: fixed;
             top: 0;
@@ -194,8 +196,7 @@
             z-index: 9999;
         `;
         overlay.onclick = function() {
-            document.body.removeChild(overlay);
-            document.body.removeChild(panel);
+            closeCustomTypesPanel();
         };
     
         document.body.appendChild(overlay);
@@ -224,10 +225,73 @@
 
     // 关闭自定义类型管理面板
     function closeCustomTypesPanel() {
-        const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
-        const panel = document.querySelector('div[style*="min-width: 400px"]');
-        if (overlay) document.body.removeChild(overlay);
-        if (panel) document.body.removeChild(panel);
+        // 方法1：使用自定义属性查找
+        const overlayByAttr = document.querySelector('div[data-custom-types-overlay="true"]');
+        const panelByAttr = document.querySelector('div[data-custom-types-panel="true"]');
+        
+        if (overlayByAttr && overlayByAttr.parentNode === document.body) {
+            document.body.removeChild(overlayByAttr);
+        }
+        if (panelByAttr && panelByAttr.parentNode === document.body) {
+            document.body.removeChild(panelByAttr);
+        }
+        
+        // 方法2：如果自定义属性方法失败，使用样式查找
+        if (!overlayByAttr) {
+            const overlays = document.querySelectorAll('div');
+            overlays.forEach(el => {
+                const style = el.style;
+                if (style.position === 'fixed' && 
+                    style.top === '0px' && 
+                    style.left === '0px' && 
+                    style.width === '100%' && 
+                    style.height === '100%' && 
+                    style.background === 'rgba(0, 0, 0, 0.5)' &&
+                    style.zIndex === '9999') {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+            });
+        }
+        
+        if (!panelByAttr) {
+            const panels = document.querySelectorAll('div');
+            panels.forEach(el => {
+                const style = el.style;
+                if (style.position === 'fixed' && 
+                    style.top === '50%' && 
+                    style.left === '50%' && 
+                    style.transform === 'translate(-50%, -50%)' &&
+                    el.innerHTML.includes('管理自定义伤害类型')) {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+            });
+        }
+        
+        // 方法3：作为最后的手段，移除所有可能相关的元素
+        // 查找所有固定定位且背景为半透明的元素
+        const allElements = document.querySelectorAll('body > div');
+        allElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.position === 'fixed') {
+                // 检查是否是遮罩层
+                if (style.background === 'rgba(0, 0, 0, 0.5)' || 
+                    style.backgroundColor === 'rgba(0, 0, 0, 0.5)') {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+                // 检查是否是面板
+                else if (el.innerHTML.includes('管理自定义伤害类型')) {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+            }
+        });
     }
 
     function editCustomType(typeId) {
