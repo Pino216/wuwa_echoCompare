@@ -365,7 +365,7 @@
             echoACheckbox.addEventListener('change', function() {
                 // 只有在序列不为空时才计算
                 if (sequence.length > 0) {
-                    calculate(false);
+                    debouncedCalculate();
                 }
             });
         }
@@ -375,7 +375,7 @@
             select.addEventListener('change', function() {
                 // 只有在序列不为空时才计算
                 if (sequence.length > 0) {
-                    calculate(false);
+                    debouncedCalculate();
                 }
             });
         });
@@ -564,8 +564,8 @@
         const data = SUBSTAT_DATA[selectEl.value];
         valSelect.innerHTML = data.values.map(v => `<option value="${v}">${v}${data.isPct?'%':''}</option>`).join('');
         // 添加onchange事件到新创建的选项
-        valSelect.setAttribute('onchange', 'calculate(false)');
-        calculate(false);
+        valSelect.setAttribute('onchange', 'debouncedCalculate()');
+        debouncedCalculate();
     }
 
     // 分页相关变量
@@ -581,7 +581,7 @@
             <div class="buff-config" data-id="${fixedId}" style="border-left:4px solid #4a6bff; background:rgba(74, 107, 255, 0.1); padding:12px; margin-bottom:10px; border-radius:8px;">
                 <div class="input-row">
                     <input type="text" class="b-name" value="新Buff" style="width:80px" oninput="syncBuffNames('${fixedId}', this.value)">
-                    <select class="b-cat" onchange="calculate()">
+                    <select class="b-cat" onchange="debouncedCalculate()">
                         <option value="bonus">伤害加成</option>
                         <option value="deepen">伤害加深</option>
                         <option value="atk_pct">攻击%</option>
@@ -592,8 +592,8 @@
                     </select>
                 </div>
                 <div class="input-row">
-                    <select class="b-type" onchange="calculate()">${typeOptions}</select>
-                    <input type="number" class="b-val" value="10" style="width:40px" oninput="calculate()">%
+                    <select class="b-type" onchange="debouncedCalculate()">${typeOptions}</select>
+                    <input type="number" class="b-val" value="10" style="width:40px" oninput="debouncedCalculate()">%
                     <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${fixedId}'))" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                 </div>
             </div>`;
@@ -733,8 +733,8 @@ function addAction() {
     });
 
     renderSequence();
-    // 添加动作后自动计算，但不显示验证警告
-    calculate(false);
+    // 添加动作后立即计算（关键操作）
+    immediateCalculate();
 }
 
     function renderSequence() {
@@ -787,7 +787,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].name = newName;
             renderSequence();
-            calculate();
+            debouncedCalculate();
         }
     }
 
@@ -795,7 +795,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].mult = parseFloat(newMult) / 100;
             renderSequence();
-            calculate();
+            debouncedCalculate();
         }
     }
 
@@ -803,7 +803,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].type = newType;
             renderSequence();
-            calculate();
+            debouncedCalculate();
         }
     }
 
@@ -811,7 +811,7 @@ function addAction() {
         if (index >= 0 && index < sequence.length) {
             sequence[index].scaling = newScaling;
             renderSequence();
-            calculate();
+            debouncedCalculate();
         }
     }
 
@@ -820,9 +820,34 @@ function addAction() {
         if(bIdx > -1) sequence[actIdx].activeBuffs.splice(bIdx, 1);
         else sequence[actIdx].activeBuffs.push(buffId);
         renderSequence();
-        calculate();
+        immediateCalculate(); // 关键操作，立即计算
     }
 
+    // 防抖计时器
+    let debounceTimer = null;
+    
+    // 防抖计算函数
+    function debouncedCalculate(delay = 300) {
+        // 清除之前的定时器
+        clearTimeout(debounceTimer);
+        
+        // 设置新的定时器
+        debounceTimer = setTimeout(() => {
+            // 只有在序列不为空时才计算
+            if (sequence.length > 0) {
+                calculate();
+            }
+        }, delay);
+    }
+    
+    // 立即计算函数（用于关键操作）
+    function immediateCalculate() {
+        clearTimeout(debounceTimer);
+        if (sequence.length > 0) {
+            calculate();
+        }
+    }
+    
     // --- 计算逻辑 ---
 function runSim(extraSubs = [], removeSubs = []) {
     updateBuffPool();
@@ -2068,12 +2093,12 @@ options: {
     function addStaticBonus() {
         const options = DAMAGE_TYPES.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         const html = `<div class="static-bonus-item input-row">
-            <select class="s-type" onchange="calculate(false)">${options}</select>
-            <input type="number" class="s-val" value="30" style="width:40px" oninput="calculate(false)">%
-            <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); calculate(false); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
+            <select class="s-type" onchange="debouncedCalculate()">${options}</select>
+            <input type="number" class="s-val" value="30" style="width:40px" oninput="debouncedCalculate()">%
+            <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); debouncedCalculate(); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
         </div>`;
         document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
-        calculate(false);
+        debouncedCalculate();
     }
 
     // 获取声骸配置的辅助函数
@@ -2096,7 +2121,7 @@ options: {
     function setEchoConfig(id, subs) {
         const container = document.querySelector(`#${id} .substat-container`);
         if (!container || !subs) return;
-        
+            
         // 确保有足够的行
         const rows = container.querySelectorAll('.substat-row');
         for (let i = 0; i < Math.max(subs.length, 5); i++) {
@@ -2107,11 +2132,11 @@ options: {
                 let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
                 for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
                 nameSelect += `</select>`;
-                row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)calculate(false)"><option value="0">0</option></select>`;
+                row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)debouncedCalculate()"><option value="0">0</option></select>`;
                 container.appendChild(row);
             }
         }
-        
+            
         // 更新值
         const updatedRows = container.querySelectorAll('.substat-row');
         subs.forEach((sub, i) => {
@@ -2119,7 +2144,7 @@ options: {
                 const row = updatedRows[i];
                 const nameSelect = row.querySelector('.sub-name');
                 const valSelect = row.querySelector('.sub-val');
-                
+                    
                 if (nameSelect && valSelect) {
                     nameSelect.value = sub.key;
                     // 更新值选项
@@ -2132,7 +2157,7 @@ options: {
                     // 确保值被设置
                     valSelect.value = sub.val;
                     // 确保有onchange事件
-                    valSelect.setAttribute('onchange', 'if(sequence.length>0)calculate(false)');
+                    valSelect.setAttribute('onchange', 'if(sequence.length>0)debouncedCalculate()');
                 }
             }
         });
@@ -2158,19 +2183,19 @@ options: {
     function setStaticBonusConfig(items) {
         const container = document.getElementById('static_bonus_list');
         if (!container) return;
-        
+            
         // 清空现有项
         container.innerHTML = '';
-        
+            
         // 添加新项
         items.forEach(item => {
             const options = DAMAGE_TYPES.map(t => 
                 `<option value="${t.id}" ${t.id === item.type ? 'selected' : ''}>${t.name}</option>`
             ).join('');
             const html = `<div class="static-bonus-item input-row">
-                <select class="s-type" onchange="if(sequence.length>0)calculate(false)">${options}</select>
-                <input type="number" class="s-val" value="${item.value}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
-                <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); if(sequence.length>0)calculate(false); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
+                <select class="s-type" onchange="if(sequence.length>0)debouncedCalculate()">${options}</select>
+                <input type="number" class="s-val" value="${item.value}" style="width:40px" oninput="if(sequence.length>0)debouncedCalculate()">%
+                <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); if(sequence.length>0)debouncedCalculate(); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
