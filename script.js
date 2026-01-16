@@ -911,7 +911,7 @@ function runSim(extraSubs = []) {
         let curBonus = 1 + staticBonusMap.all + staticBonusMap[a.type] + (subBonus[a.type] || 0);
         let curDeepen = 1;
 
-        // 获取固定值加成，并转换为基于基础属性的百分比
+        // 获取固定值加成
         let curFlatValue = 0;
         if (a.scaling === 'atk') {
             curFlatValue = subFlatValues.atk_flat;
@@ -957,15 +957,8 @@ function runSim(extraSubs = []) {
             }
         });
 
-        // 最终属性计算：基础属性 + 基础属性 × 总百分比加成 + 固定值
-        // 注意：百分比加成(curAttrPct)已经包含了所有来源的百分比加成（副词条、buff等）
-        // 固定值(curFlatValue)是绝对数值，需要转换为基于基础属性的百分比(curFlatPct)
-        // 但为了更准确，我们直接计算：基础属性 × (1 + 总百分比加成) + 固定值
-        // 然而，currentTotalStat可能已经包含了其他加成，所以我们需要重新计算
-        
-        // 方法：使用基础属性计算所有加成
-        // 总百分比加成 = curAttrPct（已经包含了所有百分比加成）
-        // 固定值 = curFlatValue
+        // 最终属性计算：基于基础数值计算所有加成
+        // 百分比加成以基础数值作为计算标准
         const finalScalingValue = baseStat * (1 + curAttrPct) + curFlatValue;
         const critExp = 1 + Math.min(1, curCr) * (curCd - 1);
 
