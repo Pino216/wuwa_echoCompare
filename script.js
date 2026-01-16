@@ -2346,22 +2346,115 @@ options: {
             const ws5 = XLSX.utils.aoa_to_sheet(echoData);
             XLSX.utils.book_append_sheet(wb, ws5, "声骸词条");
             
-            // 6. 元数据工作表
+            // 6. 计算总伤害和声骸对比（需要重新计算）
+            // 首先确保有动作序列
+            let totalDamageData = [];
+            let echoComparisonData = [];
+            
+            if (config.sequence && config.sequence.length > 0) {
+                // 保存当前状态
+                const originalSequence = sequence;
+                const originalBuffPool = buffPool;
+                
+                // 临时设置状态以进行计算
+                sequence = config.sequence;
+                buffPool = config.buffs;
+                
+                // 获取声骸词条
+                const echoASubs = config.echoes.echo_a;
+                const echoBSubs = config.echoes.echo_b;
+                
+                // 检查是否已装备声骸A
+                const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
+                
+                // 计算基础伤害
+                const resBase = runSim([], []);
+                
+                // 计算总伤害数据
+                totalDamageData.push(["伤害类型", "伤害值", "占比(%)"]);
+                const totalDmg = resBase.totalDmg;
+                DAMAGE_TYPES.forEach(type => {
+                    if (type.id !== 'all') {
+                        const dmg = resBase.typeDmg[type.id] || 0;
+                        if (dmg > 0) {
+                            const percentage = totalDmg > 0 ? ((dmg / totalDmg) * 100).toFixed(2) : "0.00";
+                            totalDamageData.push([type.name, dmg.toFixed(0), percentage]);
+                        }
+                    }
+                });
+                totalDamageData.push(["总计", totalDmg.toFixed(0), "100.00"]);
+                
+                // 计算声骸对比数据
+                echoComparisonData.push(["对比项目", "声骸A", "声骸B", "变化量", "变化率(%)"]);
+                
+                if (isEchoAEquipped) {
+                    // 声骸A已装备：基础伤害已经包含声骸A的词条
+                    const resB = runSim(echoBSubs, echoASubs);
+                    const gainB = (resB.totalDmg / resBase.totalDmg - 1) * 100;
+                    
+                    echoComparisonData.push(["总伤害", resBase.totalDmg.toFixed(0), resB.totalDmg.toFixed(0), 
+                        (resB.totalDmg - resBase.totalDmg).toFixed(0), gainB.toFixed(2)]);
+                    
+                    // 各伤害类型变化
+                    DAMAGE_TYPES.forEach(type => {
+                        if (type.id !== 'all') {
+                            const before = resBase.typeDmg[type.id] || 0;
+                            const after = resB.typeDmg[type.id] || 0;
+                            if (before > 0 || after > 0) {
+                                const change = after - before;
+                                const changePercent = before > 0 ? ((change / before) * 100).toFixed(2) : "100.00";
+                                echoComparisonData.push([`${type.name}伤害`, before.toFixed(0), after.toFixed(0), 
+                                    change.toFixed(0), changePercent]);
+                            }
+                        }
+                    });
+                } else {
+                    // 声骸A未装备
+                    const resA = runSim(echoASubs, []);
+                    const resB = runSim(echoBSubs, []);
+                    const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
+                    const gainB = (resB.totalDmg / resBase.totalDmg - 1) * 100;
+                    const diff = gainA - gainB;
+                    
+                    echoComparisonData.push(["无声骸总伤害", resBase.totalDmg.toFixed(0), "", "", ""]);
+                    echoComparisonData.push(["声骸A总伤害", resA.totalDmg.toFixed(0), "", gainA.toFixed(2) + "%", ""]);
+                    echoComparisonData.push(["声骸B总伤害", "", resB.totalDmg.toFixed(0), gainB.toFixed(2) + "%", ""]);
+                    echoComparisonData.push(["A vs B差异", "", "", diff.toFixed(2) + "%", 
+                        diff > 0 ? "声骸A更强" : "声骸B更强"]);
+                }
+                
+                // 恢复原始状态
+                sequence = originalSequence;
+                buffPool = originalBuffPool;
+            } else {
+                totalDamageData.push(["提示", "动作序列为空，无法计算伤害"]);
+                echoComparisonData.push(["提示", "动作序列为空，无法进行声骸对比"]);
+            }
+            
+            // 7. 总伤害计算结果工作表
+            const ws6 = XLSX.utils.aoa_to_sheet(totalDamageData);
+            XLSX.utils.book_append_sheet(wb, ws6, "总伤害分析");
+            
+            // 8. 声骸对比结果工作表
+            const ws7 = XLSX.utils.aoa_to_sheet(echoComparisonData);
+            XLSX.utils.book_append_sheet(wb, ws7, "声骸对比");
+            
+            // 9. 元数据工作表
             const metaData = [
                 ["导出工具", config.meta.tool_name],
                 ["版本", config.meta.version],
                 ["导出时间", config.meta.export_time],
                 ["数据版本", "2"],
-                ["备注", "鸣潮伤害分析工具导出数据"]
+                ["备注", "鸣潮伤害分析工具导出数据（包含计算结果）"]
             ];
-            const ws6 = XLSX.utils.aoa_to_sheet(metaData);
-            XLSX.utils.book_append_sheet(wb, ws6, "元数据");
+            const ws8 = XLSX.utils.aoa_to_sheet(metaData);
+            XLSX.utils.book_append_sheet(wb, ws8, "元数据");
             
             // 生成并下载文件
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             XLSX.writeFile(wb, `鸣潮分析_${timestamp}.xlsx`);
             
-            console.log('XLSX导出成功');
+            console.log('XLSX导出成功（包含计算结果）');
             return true;
             
         } catch (error) {
