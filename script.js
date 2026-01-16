@@ -2752,7 +2752,10 @@ options: {
                         echo_a: getEchoConfig('echo_a'),
                         echo_b: getEchoConfig('echo_b')
                     },
-                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
+                        id: t.id,
+                        name: t.name
+                    }))
                 };
             }
             
@@ -3278,16 +3281,30 @@ options: {
             const ws9 = XLSX.utils.aoa_to_sheet(echoComparisonDetailedData);
             XLSX.utils.book_append_sheet(wb, ws9, "声骸对比详细计算");
             
-            // 12. 元数据工作表
+            // 12. 自定义伤害类型工作表
+            const customDamageTypesData = [
+                ["类型ID", "类型名称"]
+            ];
+            if (config.damage_types && Array.isArray(config.damage_types)) {
+                config.damage_types.forEach(t => {
+                    customDamageTypesData.push([t.id, t.name]);
+                });
+            } else {
+                customDamageTypesData.push(["无自定义伤害类型", ""]);
+            }
+            const ws10 = XLSX.utils.aoa_to_sheet(customDamageTypesData);
+            XLSX.utils.book_append_sheet(wb, ws10, "自定义伤害类型");
+            
+            // 13. 元数据工作表
             const metaData = [
                 ["导出工具", config.meta.tool_name],
                 ["版本", config.meta.version],
                 ["导出时间", config.meta.export_time],
-                ["数据版本", "4"],
+                ["数据版本", "5"],
                 ["备注", "鸣潮伤害分析工具导出数据（包含详细计算过程和声骸对比详细计算）"]
             ];
-            const ws10 = XLSX.utils.aoa_to_sheet(metaData);
-            XLSX.utils.book_append_sheet(wb, ws10, "元数据");
+            const ws11 = XLSX.utils.aoa_to_sheet(metaData);
+            XLSX.utils.book_append_sheet(wb, ws11, "元数据");
             
             // 获取自定义文件名
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -3952,7 +3969,10 @@ options: {
                     echo_a: getEchoConfig('echo_a'),
                     echo_b: getEchoConfig('echo_b')
                 },
-                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+                damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
+                    id: t.id,
+                    name: t.name
+                }))
             };
             
             // 总是保存到本地存储（自动保存）
