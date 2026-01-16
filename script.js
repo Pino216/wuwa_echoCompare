@@ -1346,8 +1346,9 @@ function getColorForType(typeId) {
             return subs;
         };
 
-        // 检查是否已装备声骸A
-        const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
+        // 修复：正确获取声骸A装备状态
+        const echoACheckbox = document.getElementById('echo_a_equipped');
+        const isEchoAEquipped = echoACheckbox ? echoACheckbox.checked : true;
         
         let resBase, resB;
         let echoASubs, echoBSubs;
