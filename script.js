@@ -2431,6 +2431,106 @@ options: {
                 echoComparisonData.push(["提示", "动作序列为空，无法进行声骸对比"]);
             }
             
+            // 7. 详细计算过程工作表
+            let detailedCalculationData = [];
+            
+            if (config.sequence && config.sequence.length > 0) {
+                // 保存当前状态
+                const originalSequence = sequence;
+                const originalBuffPool = buffPool;
+                
+                // 临时设置状态以进行计算
+                sequence = config.sequence;
+                buffPool = config.buffs;
+                
+                // 获取声骸词条
+                const echoASubs = config.echoes.echo_a;
+                const echoBSubs = config.echoes.echo_b;
+                
+                // 检查是否已装备声骸A
+                const isEchoAEquipped = document.getElementById('echo_a_equipped')?.checked ?? true;
+                
+                // 计算基础伤害（使用声骸A）
+                const resBase = runSim([], []);
+                
+                // 准备详细计算数据
+                detailedCalculationData.push(["详细伤害计算过程（基于当前装备的声骸A）"]);
+                detailedCalculationData.push([]);
+                detailedCalculationData.push(["动作名称", "伤害类型", "基数类型", "基础属性", "面板已有加成%", "额外加成%", "总属性加成%", 
+                                             "伤害加成%", "伤害加深%", "暴击率%", "暴击伤害%", "暴击期望倍率", 
+                                             "动作倍率%", "最终属性值", "基础伤害", "暴击期望伤害", "应用Buff"]);
+                
+                // 遍历每个动作的详细信息
+                resBase.detailedInfo.forEach(info => {
+                    const damageTypeName = DAMAGE_TYPES.find(t => t.id === info.damageType)?.name || info.damageType;
+                    const scalingName = {
+                        'atk': '攻击力',
+                        'hp': '生命值',
+                        'def': '防御力'
+                    }[info.scalingType] || info.scalingType;
+                    
+                    // 获取基础属性值
+                    let baseStat = 0;
+                    if (info.scalingType === 'atk') {
+                        baseStat = parseFloat(document.getElementById('base_atk').value) || 0;
+                    } else if (info.scalingType === 'hp') {
+                        baseStat = parseFloat(document.getElementById('base_hp')?.value) || 0;
+                    } else if (info.scalingType === 'def') {
+                        baseStat = parseFloat(document.getElementById('base_def').value) || 0;
+                    }
+                    
+                    // 计算总属性加成百分比
+                    const totalAttrPct = (info.panelExistingPct || 0) + info.totalAttrBonusPct;
+                    
+                    // 计算最终属性值
+                    const finalScalingValue = info.finalScalingValue || (baseStat * (1 + totalAttrPct / 100));
+                    
+                    // 从序列中获取动作倍率
+                    const action = config.sequence[info.actionIndex];
+                    const actionMultPct = (action.mult * 100).toFixed(1);
+                    
+                    // 计算基础伤害（未考虑暴击）
+                    const baseDamage = finalScalingValue * action.mult;
+                    
+                    // 计算暴击期望伤害
+                    const critExpDamage = baseDamage * info.critMultiplier;
+                    
+                    // 格式化Buff信息
+                    const buffNames = info.appliedBuffs.map(b => `${b.name}+${b.value.toFixed(1)}%`).join('; ');
+                    
+                    detailedCalculationData.push([
+                        info.actionName,
+                        damageTypeName,
+                        scalingName,
+                        baseStat.toFixed(0),
+                        (info.panelExistingPct || 0).toFixed(2),
+                        info.totalAttrBonusPct.toFixed(2),
+                        totalAttrPct.toFixed(2),
+                        info.totalDamageBonusPct.toFixed(2),
+                        info.totalDamageDeepenPct.toFixed(2),
+                        info.critRate.toFixed(1),
+                        info.critDamage.toFixed(1),
+                        info.critMultiplier.toFixed(3),
+                        actionMultPct,
+                        finalScalingValue.toFixed(0),
+                        baseDamage.toFixed(0),
+                        critExpDamage.toFixed(0),
+                        buffNames || "无"
+                    ]);
+                });
+                
+                // 添加总计行
+                detailedCalculationData.push([]);
+                detailedCalculationData.push(["总计", "", "", "", "", "", "", "", "", "", "", "", "", "", 
+                    "", resBase.totalDmg.toFixed(0), ""]);
+                
+                // 恢复原始状态
+                sequence = originalSequence;
+                buffPool = originalBuffPool;
+            } else {
+                detailedCalculationData.push(["提示", "动作序列为空，无法计算详细过程"]);
+            }
+            
             // 7. 总伤害计算结果工作表
             const ws6 = XLSX.utils.aoa_to_sheet(totalDamageData);
             XLSX.utils.book_append_sheet(wb, ws6, "总伤害分析");
@@ -2439,16 +2539,20 @@ options: {
             const ws7 = XLSX.utils.aoa_to_sheet(echoComparisonData);
             XLSX.utils.book_append_sheet(wb, ws7, "声骸对比");
             
-            // 9. 元数据工作表
+            // 9. 详细计算过程工作表
+            const ws8 = XLSX.utils.aoa_to_sheet(detailedCalculationData);
+            XLSX.utils.book_append_sheet(wb, ws8, "详细计算过程");
+            
+            // 10. 元数据工作表
             const metaData = [
                 ["导出工具", config.meta.tool_name],
                 ["版本", config.meta.version],
                 ["导出时间", config.meta.export_time],
-                ["数据版本", "2"],
-                ["备注", "鸣潮伤害分析工具导出数据（包含计算结果）"]
+                ["数据版本", "3"],
+                ["备注", "鸣潮伤害分析工具导出数据（包含详细计算过程）"]
             ];
-            const ws8 = XLSX.utils.aoa_to_sheet(metaData);
-            XLSX.utils.book_append_sheet(wb, ws8, "元数据");
+            const ws9 = XLSX.utils.aoa_to_sheet(metaData);
+            XLSX.utils.book_append_sheet(wb, ws9, "元数据");
             
             // 生成并下载文件
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
