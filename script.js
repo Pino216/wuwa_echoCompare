@@ -2153,6 +2153,23 @@ options: {
         exportToJSON();
     }
 
+    // 获取自定义文件名
+    function getCustomFileName(defaultName, extension) {
+        const userInput = prompt(`请输入文件名（不含扩展名）:\n\n默认: ${defaultName}`, defaultName);
+        if (userInput === null) {
+            // 用户取消
+            return null;
+        }
+        const trimmed = userInput.trim();
+        if (trimmed === '') {
+            // 用户输入为空，使用默认
+            return `${defaultName}.${extension}`;
+        }
+        // 确保文件名安全：移除非法字符
+        const safeName = trimmed.replace(/[<>:"/\\|?*]/g, '_');
+        return `${safeName}.${extension}`;
+    }
+
     // 导出为JSON格式（可接受外部config参数）
     function exportToJSON(externalConfig = null) {
         try {
@@ -2210,6 +2227,17 @@ options: {
                 alert('警告：部分数据可能不完整，但导出将继续进行。');
             }
             
+            // 获取自定义文件名
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const defaultName = `鸣潮分析_${timestamp}`;
+            const fileName = getCustomFileName(defaultName, 'json');
+            
+            if (fileName === null) {
+                // 用户取消
+                console.log('用户取消导出');
+                return false;
+            }
+            
             // 创建并下载文件
             const jsonStr = JSON.stringify(config, null, 2);
             const blob = new Blob(["\ufeff" + jsonStr], { 
@@ -2217,8 +2245,7 @@ options: {
             });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            link.download = `鸣潮分析_${timestamp}.json`;
+            link.download = fileName;
             link.click();
             
             // 清理URL对象
@@ -2802,9 +2829,19 @@ options: {
             const ws10 = XLSX.utils.aoa_to_sheet(metaData);
             XLSX.utils.book_append_sheet(wb, ws10, "元数据");
             
-            // 生成并下载文件
+            // 获取自定义文件名
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            XLSX.writeFile(wb, `鸣潮分析_${timestamp}.xlsx`);
+            const defaultName = `鸣潮分析_${timestamp}`;
+            const fileName = getCustomFileName(defaultName, 'xlsx');
+            
+            if (fileName === null) {
+                // 用户取消
+                console.log('用户取消导出');
+                return false;
+            }
+            
+            // 生成并下载文件
+            XLSX.writeFile(wb, fileName);
             
             console.log('XLSX导出成功（包含计算结果）');
             return true;
@@ -3078,13 +3115,20 @@ options: {
             
             if (exportToFile) {
                 // 导出为文件
+                let exportSuccess;
                 if (format === 'json') {
-                    exportToJSON(config);
+                    exportSuccess = exportToJSON(config);
                 } else if (format === 'xlsx') {
-                    exportToXLSX(config);
+                    exportSuccess = exportToXLSX(config);
                 }
-                if (showToast) {
+                if (exportSuccess && showToast) {
                     showAutoSaveToast('✅ 配置已保存并导出为文件！');
+                } else if (!exportSuccess) {
+                    // 导出失败或用户取消
+                    if (showToast) {
+                        showAutoSaveToast('❌ 导出已取消或失败');
+                    }
+                    return false;
                 } else {
                     console.log('🔄 配置已保存并导出为文件');
                 }
