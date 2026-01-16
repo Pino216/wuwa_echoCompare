@@ -1761,26 +1761,50 @@ function getColorForType(typeId) {
         
         // 显示不同基数的属性加成
         if (atkCount > 0) {
+            const avgAtkBonus = totalAtkBonus / atkCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均攻击加成：</span>
-                    <span style="color:#4a6bff; font-weight:bold;">${(totalAtkBonus / atkCount).toFixed(2)}% (${avgAtkMultiplier.toFixed(3)}倍)</span>
+                    <span>平均额外攻击加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${avgAtkBonus.toFixed(2)}% (${avgAtkMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
+                    <span>平均额外攻击加成：</span>
+                    <span>无基于攻击的动作</span>
                 </div>
             `;
         }
         if (hpCount > 0) {
+            const avgHpBonus = totalHpBonus / hpCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均生命加成：</span>
-                    <span style="color:#4a6bff; font-weight:bold;">${(totalHpBonus / hpCount).toFixed(2)}% (${avgHpMultiplier.toFixed(3)}倍)</span>
+                    <span>平均额外生命加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${avgHpBonus.toFixed(2)}% (${avgHpMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
+                    <span>平均额外生命加成：</span>
+                    <span>无基于生命的动作</span>
                 </div>
             `;
         }
         if (defCount > 0) {
+            const avgDefBonus = totalDefBonus / defCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均防御加成：</span>
-                    <span style="color:#4a6bff; font-weight:bold;">${(totalDefBonus / defCount).toFixed(2)}% (${avgDefMultiplier.toFixed(3)}倍)</span>
+                    <span>平均额外防御加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${avgDefBonus.toFixed(2)}% (${avgDefMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
+                    <span>平均额外防御加成：</span>
+                    <span>无基于防御的动作</span>
                 </div>
             `;
         }
@@ -1809,7 +1833,8 @@ function getColorForType(typeId) {
                 <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(139, 69, 19, 0.2); font-size:11px; color:#8b949e;">
                     💡 实际倍率 = 1 + 总加成百分比/100。例如：50%加成 = 1.5倍<br>
                     💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)<br>
-                    💡 属性加成按基数类型（攻击/生命/防御）分别统计
+                    💡 属性加成按基数类型（攻击/生命/防御）分别统计<br>
+                    💡 "额外加成"仅指声骸、Buff等带来的额外提升，不包括面板已有加成
                 </div>
             </div>
             </div>
