@@ -764,7 +764,7 @@ function addAction() {
                         <option value="def" ${a.scaling === 'def' ? 'selected' : ''}>防御力</option>
                     </select>
                     <span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--accent); font-size:1.2em; font-weight:bold;" 
-                          onclick="confirmDelete('确定要删除动作"${a.name}"吗？', () => { sequence.splice(${i},1); renderSequence(); calculate(); })">×</span>
+                          onclick="confirmDelete('确定要删除动作${a.name.replace(/'/g, "\\'").replace(/"/g, '\\"')}吗？', () => { sequence.splice(${i},1); renderSequence(); calculate(); })">×</span>
                 </div>
                 <div style="margin-top:6px;">
                     ${buffPool.map(b => `
