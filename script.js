@@ -134,7 +134,7 @@
                                 font-size:11px;
                                 margin-right:5px;
                             ">编辑</button>
-                            <button onclick="removeCustomDamageType('${t.id}')" style="
+                            <button onclick="confirmDelete('确定要删除自定义伤害类型"${t.name}"吗？\\n\\n注意：删除后，使用此类型的配置将恢复为默认类型。', () => removeCustomDamageType('${t.id}'))" style="
                                 background:linear-gradient(135deg, #ff6b8b, #ff8ba3);
                                 color:white;
                                 border:none;
@@ -594,7 +594,7 @@
                 <div class="input-row">
                     <select class="b-type" onchange="calculate()">${typeOptions}</select>
                     <input type="number" class="b-val" value="10" style="width:40px" oninput="calculate()">%
-                    <button onclick="removeBuff('${fixedId}')" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                    <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${fixedId}'))" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                 </div>
             </div>`;
         
@@ -764,7 +764,7 @@ function addAction() {
                         <option value="def" ${a.scaling === 'def' ? 'selected' : ''}>防御力</option>
                     </select>
                     <span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--accent); font-size:1.2em; font-weight:bold;" 
-                          onclick="sequence.splice(${i},1);renderSequence();calculate();">×</span>
+                          onclick="confirmDelete('确定要删除动作"${a.name}"吗？', () => { sequence.splice(${i},1); renderSequence(); calculate(); })">×</span>
                 </div>
                 <div style="margin-top:6px;">
                     ${buffPool.map(b => `
@@ -2008,7 +2008,7 @@ options: {
         const html = `<div class="static-bonus-item input-row">
             <select class="s-type" onchange="calculate(false)">${options}</select>
             <input type="number" class="s-val" value="30" style="width:40px" oninput="calculate(false)">%
-            <button onclick="this.parentElement.remove(); calculate(false);" style="color:var(--accent); background:none; border:none;">×</button>
+            <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); calculate(false); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
         </div>`;
         document.getElementById('static_bonus_list').insertAdjacentHTML('beforeend', html);
         calculate(false);
@@ -2108,7 +2108,7 @@ options: {
             const html = `<div class="static-bonus-item input-row">
                 <select class="s-type" onchange="if(sequence.length>0)calculate(false)">${options}</select>
                 <input type="number" class="s-val" value="${item.value}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
-                <button onclick="this.parentElement.remove(); if(sequence.length>0)calculate(false);" style="color:var(--accent); background:none; border:none;">×</button>
+                <button onclick="confirmDelete('确定要删除这个静态加成吗？', () => { this.parentElement.remove(); if(sequence.length>0)calculate(false); })" style="color:var(--accent); background:none; border:none; cursor:pointer;">×</button>
             </div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
@@ -2151,6 +2151,100 @@ options: {
     function exportFullData() {
         // 默认导出JSON格式，以保持向后兼容性
         exportToJSON();
+    }
+
+    // 确认删除函数，支持"不再提示"选项
+    function confirmDelete(message, callback) {
+        // 检查是否已经选择"不再提示"
+        const skipConfirm = sessionStorage.getItem('skipDeleteConfirm');
+        if (skipConfirm === 'true') {
+            callback();
+            return;
+        }
+        
+        // 创建确认弹窗
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 90%;
+            border: 2px solid #8B4513;
+        `;
+        
+        // 创建复选框
+        const checkboxId = 'skipConfirmCheckbox_' + Date.now();
+        const modalContent = `
+            <h3 style="margin-top:0; color:#8B4513; margin-bottom:15px;">确认删除</h3>
+            <p style="margin-bottom:20px; color:#333;">${message}</p>
+            <div style="margin-bottom:20px;">
+                <label style="display:flex; align-items:center; cursor:pointer;">
+                    <input type="checkbox" id="${checkboxId}" style="margin-right:8px;">
+                    <span style="font-size:13px; color:#8B4513;">当次使用不再提示（关闭页面后重置）</span>
+                </label>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button id="cancelBtn" style="
+                    background:linear-gradient(135deg, #8b949e, #6e7681);
+                    color:white;
+                    border:none;
+                    padding:8px 16px;
+                    border-radius:6px;
+                    cursor:pointer;
+                    font-weight:bold;
+                ">取消</button>
+                <button id="confirmBtn" style="
+                    background:linear-gradient(135deg, #ff6b8b, #ff8ba3);
+                    color:white;
+                    border:none;
+                    padding:8px 16px;
+                    border-radius:6px;
+                    cursor:pointer;
+                    font-weight:bold;
+                ">确认删除</button>
+            </div>
+        `;
+        
+        modal.innerHTML = modalContent;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        // 添加事件监听
+        document.getElementById('cancelBtn').onclick = function() {
+            document.body.removeChild(overlay);
+        };
+        
+        document.getElementById('confirmBtn').onclick = function() {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox.checked) {
+                sessionStorage.setItem('skipDeleteConfirm', 'true');
+            }
+            document.body.removeChild(overlay);
+            callback();
+        };
+        
+        // 点击遮罩层关闭
+        overlay.onclick = function(e) {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+            }
+        };
     }
 
     // 获取自定义文件名
@@ -2961,7 +3055,7 @@ options: {
                         <div class="input-row">
                             <select class="b-type" onchange="if(sequence.length>0)calculate(false)">${typeOptions}</select>
                             <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
-                            <button onclick="removeBuff('${buff.id}')" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                            <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${buff.id}'))" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                         </div>
                     </div>`;
                 document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
