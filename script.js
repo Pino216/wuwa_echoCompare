@@ -271,8 +271,10 @@
         const actTypeSelect = document.getElementById('act_type');
         if (actTypeSelect) {
             const currentValue = actTypeSelect.value;
+            // 如果是首次加载（currentValue为空），默认选择'skill'类型
+            const defaultValue = currentValue || 'skill';
             actTypeSelect.innerHTML = DAMAGE_TYPES.map(t => 
-                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+                `<option value="${t.id}" ${t.id === defaultValue ? 'selected' : ''}>${t.name}</option>`
             ).join('');
         }
         
@@ -424,6 +426,52 @@
             renderBuffPagination();
         }, 100);
 
+        // 项目完整性检查
+        function checkProjectIntegrity() {
+            console.log('🔍 正在检查项目完整性...');
+        
+            // 检查必要的DOM元素
+            const requiredElements = [
+                'base_atk', 'total_atk_now', 'base_cr', 'base_cd',
+                'act_type', 'act_name', 'act_mult', 'act_scaling',
+                'static_bonus_list', 'buff_pool', 'action_sequence',
+                'echo_a', 'echo_b', 'compare_res', 'dmgChart'
+            ];
+        
+            let allElementsExist = true;
+            requiredElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.error(`❌ 缺少必要元素: #${id}`);
+                    allElementsExist = false;
+                }
+            });
+        
+            // 检查DAMAGE_TYPES数组
+            if (!DAMAGE_TYPES || !Array.isArray(DAMAGE_TYPES) || DAMAGE_TYPES.length === 0) {
+                console.error('❌ DAMAGE_TYPES数组未正确初始化');
+                allElementsExist = false;
+            } else {
+                console.log(`✅ DAMAGE_TYPES数组包含 ${DAMAGE_TYPES.length} 个伤害类型`);
+            }
+        
+            // 检查SUBSTAT_DATA对象
+            if (!SUBSTAT_DATA || typeof SUBSTAT_DATA !== 'object' || Object.keys(SUBSTAT_DATA).length === 0) {
+                console.error('❌ SUBSTAT_DATA对象未正确初始化');
+                allElementsExist = false;
+            } else {
+                console.log(`✅ SUBSTAT_DATA对象包含 ${Object.keys(SUBSTAT_DATA).length} 个词条类型`);
+            }
+        
+            if (allElementsExist) {
+                console.log('✅ 项目完整性检查通过！');
+            } else {
+                console.warn('⚠️ 项目完整性检查发现一些问题，某些功能可能无法正常工作');
+            }
+        
+            return allElementsExist;
+        }
+
         // 添加欢迎提示
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
@@ -431,6 +479,10 @@
             console.log('📊 声骸词条修改实时计算已启用');
             console.log('💾 自动保存功能已启用（每5分钟）');
             console.log('📄 Buff列表分页功能已启用（每页8个）');
+        
+            // 运行完整性检查
+            checkProjectIntegrity();
+        
             if (sequence.length === 0) {
                 console.log('⚠️ 当前动作序列为空，请添加动作后进行计算');
             }
