@@ -16,7 +16,7 @@
         "def_flat": { name: "固定防御", type: "def_flat", isPct: false, values: [70, 60, 50, 40] }
     };
 
-    // 统一的伤害类型配置
+    // 统一的伤害类型配置（包含默认类型和自定义类型）
     let DAMAGE_TYPES = [
         { id: 'all', name: '通用' },
         { id: 'basic', name: '普攻' },
@@ -25,6 +25,33 @@
         { id: 'ult', name: '共鸣解放' },
         { id: 'echo', name: '声骸技能' }
     ];
+    
+    // 初始化时从本地存储加载自定义伤害类型
+    function loadCustomDamageTypesFromStorage() {
+        try {
+            const saved = localStorage.getItem('mingchao_damage_calc_v1.4');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.damage_types && Array.isArray(data.damage_types)) {
+                    // 移除现有的自定义类型
+                    DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
+                    // 添加导入的自定义类型
+                    data.damage_types.forEach(t => {
+                        // 确保自定义类型ID以'custom_'开头
+                        const typeId = t.id.startsWith('custom_') ? t.id : 'custom_' + t.id;
+                        DAMAGE_TYPES.push({
+                            id: typeId,
+                            name: t.name
+                        });
+                    });
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.warn('加载自定义伤害类型失败:', error);
+        }
+        return false;
+    }
 
     // 自定义伤害类型管理
     function addCustomDamageType() {
@@ -375,6 +402,9 @@
 
     // 添加页面加载时的视觉增强
     window.onload = () => {
+        // 首先从本地存储加载自定义伤害类型
+        loadCustomDamageTypesFromStorage();
+        
         // 确保只初始化一次声骸选择器
         // 检查是否已经有行存在，如果没有才初始化
         const echoAContainer = document.querySelector('#echo_a .substat-container');
@@ -2445,7 +2475,8 @@ options: {
         }
         
         // 重置自定义伤害类型（只保留默认类型）
-        DAMAGE_TYPES = [
+        // 但保留可能已从本地存储加载的自定义类型
+        const defaultTypes = [
             { id: 'all', name: '通用' },
             { id: 'basic', name: '普攻' },
             { id: 'heavy', name: '重击' },
@@ -2453,6 +2484,11 @@ options: {
             { id: 'ult', name: '共鸣解放' },
             { id: 'echo', name: '声骸技能' }
         ];
+        // 尝试从本地存储加载自定义类型
+        loadCustomDamageTypesFromStorage();
+        // 确保默认类型存在
+        const customTypes = DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'));
+        DAMAGE_TYPES = [...defaultTypes, ...customTypes];
         
         // 更新所有选择器
         updateAllDamageTypeSelects();
@@ -3285,8 +3321,10 @@ options: {
             const customDamageTypesData = [
                 ["类型ID", "类型名称"]
             ];
-            if (config.damage_types && Array.isArray(config.damage_types)) {
-                config.damage_types.forEach(t => {
+            // 确保从DAMAGE_TYPES中获取所有自定义类型，而不仅仅是从config中
+            const customTypes = DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'));
+            if (customTypes.length > 0) {
+                customTypes.forEach(t => {
                     customDamageTypesData.push([t.id, t.name]);
                 });
             } else {
@@ -3395,18 +3433,6 @@ options: {
             }
         }
         
-        // 恢复基础面板数据
-        if (data.character) {
-            document.getElementById('base_hp').value = data.character.base_hp || '';
-            document.getElementById('total_hp_now').value = data.character.total_hp_now || '';
-            document.getElementById('base_atk').value = data.character.base_atk || '';
-            document.getElementById('total_atk_now').value = data.character.total_atk_now || '';
-            document.getElementById('base_def').value = data.character.base_def || '';
-            document.getElementById('total_def_now').value = data.character.total_def_now || '';
-            document.getElementById('base_cr').value = data.character.base_cr || '';
-            document.getElementById('base_cd').value = data.character.base_cd || '';
-        }
-        
         // 恢复自定义伤害类型（必须在恢复其他配置之前）
         if (data.damage_types && Array.isArray(data.damage_types)) {
             // 移除现有的自定义类型
@@ -3420,9 +3446,22 @@ options: {
                     name: t.name
                 });
             });
-            // 立即更新所有选择器
-            updateAllDamageTypeSelects();
         }
+        
+        // 恢复基础面板数据
+        if (data.character) {
+            document.getElementById('base_hp').value = data.character.base_hp || '';
+            document.getElementById('total_hp_now').value = data.character.total_hp_now || '';
+            document.getElementById('base_atk').value = data.character.base_atk || '';
+            document.getElementById('total_atk_now').value = data.character.total_atk_now || '';
+            document.getElementById('base_def').value = data.character.base_def || '';
+            document.getElementById('total_def_now').value = data.character.total_def_now || '';
+            document.getElementById('base_cr').value = data.character.base_cr || '';
+            document.getElementById('base_cd').value = data.character.base_cd || '';
+        }
+        
+        // 立即更新所有选择器，确保后续配置能正确引用自定义类型
+        updateAllDamageTypeSelects();
         
         // 恢复静态加成
         if (data.static_bonus && Array.isArray(data.static_bonus)) {
