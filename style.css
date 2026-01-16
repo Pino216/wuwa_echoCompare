@@ -574,20 +574,20 @@
             box-shadow: 0 4px 12px rgba(255, 107, 139, 0.3);
         }
         
-        /* 导出下拉菜单样式 */
-        .export-dropdown {
+        /* 导出和导入下拉菜单样式 */
+        .export-dropdown, .import-dropdown {
             position: relative;
             display: inline-block;
         }
         
-        .export-btn {
+        .export-btn, .import-btn {
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .export-menu {
+        .export-menu, .import-menu {
             display: none;
             position: absolute;
             top: calc(100% + 5px);
@@ -600,7 +600,7 @@
             overflow: hidden;
         }
         
-        .export-menu a {
+        .export-menu a, .import-menu a {
             color: #333;
             padding: 12px 16px;
             text-decoration: none;
@@ -611,11 +611,15 @@
             cursor: pointer;
         }
         
-        .export-menu a:last-child {
+        .export-menu a:last-child, .import-menu a:last-child {
             border-bottom: none;
         }
         
-        .export-menu a:hover {
+        .export-menu a:hover, .import-menu a:hover {
             background-color: #f1f1f1;
             color: #4a6bff;
+        }
+        
+        .import-btn {
+            background: linear-gradient(135deg, #2196f3, #42a5f5) !important;
         }

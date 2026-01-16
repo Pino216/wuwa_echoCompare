@@ -2300,22 +2300,50 @@ options: {
 
     // 导出菜单控制
     let exportMenuVisible = false;
+    let importMenuVisible = false;
     
     function toggleExportMenu() {
         const menu = document.getElementById('exportMenu');
         if (!menu) return;
         
+        // 关闭导入菜单
+        const importMenu = document.getElementById('importMenu');
+        if (importMenu) {
+            importMenu.style.display = 'none';
+            importMenuVisible = false;
+        }
+        
         if (exportMenuVisible) {
             menu.style.display = 'none';
         } else {
-            // 隐藏其他可能打开的菜单
             menu.style.display = 'block';
-            // 点击页面其他地方时关闭菜单
             setTimeout(() => {
                 document.addEventListener('click', closeExportMenuOnClickOutside);
             }, 10);
         }
         exportMenuVisible = !exportMenuVisible;
+    }
+    
+    function toggleImportMenu() {
+        const menu = document.getElementById('importMenu');
+        if (!menu) return;
+        
+        // 关闭导出菜单
+        const exportMenu = document.getElementById('exportMenu');
+        if (exportMenu) {
+            exportMenu.style.display = 'none';
+            exportMenuVisible = false;
+        }
+        
+        if (importMenuVisible) {
+            menu.style.display = 'none';
+        } else {
+            menu.style.display = 'block';
+            setTimeout(() => {
+                document.addEventListener('click', closeImportMenuOnClickOutside);
+            }, 10);
+        }
+        importMenuVisible = !importMenuVisible;
     }
     
     function closeExportMenuOnClickOutside(event) {
@@ -2328,6 +2356,129 @@ options: {
             menu.style.display = 'none';
             exportMenuVisible = false;
             document.removeEventListener('click', closeExportMenuOnClickOutside);
+        }
+    }
+    
+    function closeImportMenuOnClickOutside(event) {
+        const menu = document.getElementById('importMenu');
+        const button = document.querySelector('.import-btn');
+        
+        if (menu && button && 
+            !menu.contains(event.target) && 
+            !button.contains(event.target)) {
+            menu.style.display = 'none';
+            importMenuVisible = false;
+            document.removeEventListener('click', closeImportMenuOnClickOutside);
+        }
+    }
+    
+    // 触发文件导入
+    function triggerFileImport() {
+        document.getElementById('csvImport').click();
+        // 关闭菜单
+        const menu = document.getElementById('importMenu');
+        if (menu) {
+            menu.style.display = 'none';
+            importMenuVisible = false;
+        }
+    }
+    
+    // 重置到默认值
+    function resetToDefaults() {
+        if (!confirm('确定要重置所有设置到默认值吗？这将清除当前的所有配置。')) {
+            return;
+        }
+        
+        // 重置基础面板
+        document.getElementById('base_hp').value = '10000';
+        document.getElementById('total_hp_now').value = '20000';
+        document.getElementById('base_atk').value = '1000';
+        document.getElementById('total_atk_now').value = '2500';
+        document.getElementById('base_def').value = '1000';
+        document.getElementById('total_def_now').value = '1500';
+        document.getElementById('base_cr').value = '60';
+        document.getElementById('base_cd').value = '200';
+        
+        // 重置静态加成
+        document.getElementById('static_bonus_list').innerHTML = '';
+        
+        // 重置动态Buff池
+        document.getElementById('buff_pool').innerHTML = '';
+        buffPool = [];
+        buffPage = 1;
+        totalBuffPages = 1;
+        
+        // 重置动作序列
+        sequence = [];
+        renderSequence();
+        
+        // 重置声骸配置
+        resetEchoConfig('echo_a');
+        resetEchoConfig('echo_b');
+        
+        // 重置声骸A装备状态
+        const echoACheckbox = document.getElementById('echo_a_equipped');
+        if (echoACheckbox) {
+            echoACheckbox.checked = true;
+        }
+        
+        // 重置自定义伤害类型（只保留默认类型）
+        DAMAGE_TYPES = [
+            { id: 'all', name: '通用' },
+            { id: 'basic', name: '普攻' },
+            { id: 'heavy', name: '重击' },
+            { id: 'skill', name: '共鸣技能' },
+            { id: 'ult', name: '共鸣解放' },
+            { id: 'echo', name: '声骸技能' }
+        ];
+        
+        // 更新所有选择器
+        updateAllDamageTypeSelects();
+        
+        // 重置图表和结果
+        const ctx = document.getElementById('dmgChart').getContext('2d');
+        if (dmgChart) dmgChart.destroy();
+        
+        // 清空结果显示区域
+        document.getElementById('compare_res').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">等待计算...</div>';
+        
+        // 清空伤害组成表格
+        document.getElementById('damageComposition').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无伤害数据</div>';
+        
+        // 隐藏详细加成信息
+        const bonusContainer = document.getElementById('detailed_bonus_info');
+        if (bonusContainer) {
+            bonusContainer.style.display = 'none';
+        }
+        
+        // 重新初始化声骸选择器
+        setTimeout(() => {
+            initEchoSelects('echo_a');
+            initEchoSelects('echo_b');
+        }, 100);
+        
+        // 重新渲染Buff分页
+        renderBuffPagination();
+        
+        alert('✅ 已重置所有设置到默认值！');
+    }
+    
+    // 重置声骸配置
+    function resetEchoConfig(id) {
+        const container = document.querySelector(`#${id} .substat-container`);
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        // 重新初始化5行
+        for(let i = 0; i < 5; i++) {
+            const row = document.createElement('div');
+            row.className = 'substat-row';
+            let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
+            for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
+            nameSelect += `</select>`;
+            row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)debouncedCalculate()"><option value="0">0</option></select>`;
+            container.appendChild(row);
         }
     }
     
@@ -3815,7 +3966,23 @@ options: {
             const saved = localStorage.getItem('mingchao_damage_calc_v1.4');
             if (!saved) {
                 if (confirm('本地存储中没有找到保存的配置。是否从文件导入？')) {
-                    document.getElementById('csvImport').click();
+                    triggerFileImport();
+                } else {
+                    // 用户选择不从文件导入，提供创建默认配置的选项
+                    if (confirm('是否创建并加载默认配置？')) {
+                        // 调用重置函数来设置默认值
+                        resetToDefaults();
+                        // 添加一个默认动作
+                        sequence = [{ 
+                            name: "技能演示", 
+                            mult: 2.5, 
+                            type: "skill", 
+                            scaling: "atk",
+                            activeBuffs: [] 
+                        }];
+                        renderSequence();
+                        calculate(false);
+                    }
                 }
                 return false;
             }

@@ -21,12 +21,18 @@
                 <a href="javascript:void(0)" onclick="saveConfig()">仅保存到本地存储</a>
             </div>
         </div>
-        <button class="btn load-config-btn" onclick="loadConfig()">
-            📂 加载配置
-        </button>
-        <input type="file" id="csvImport" class="hidden-file-input" onchange="importFullData(this)">
-        <button class="btn reset-btn" onclick="location.reload()">
-            🔄 重置页面
+        <div class="import-dropdown">
+            <button class="btn import-btn" onclick="toggleImportMenu()">
+                📂 导入配置 ▼
+            </button>
+            <div class="import-menu" id="importMenu">
+                <a href="javascript:void(0)" onclick="loadConfig()">从本地存储加载</a>
+                <a href="javascript:void(0)" onclick="triggerFileImport()">从文件导入</a>
+            </div>
+        </div>
+        <input type="file" id="csvImport" class="hidden-file-input" onchange="importFullData(this)" accept=".json,.xlsx,.xls">
+        <button class="btn reset-btn" onclick="resetToDefaults()">
+            🔄 重置到默认
         </button>
     </div>
 
