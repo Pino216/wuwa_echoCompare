@@ -763,7 +763,7 @@ function addAction() {
                         <option value="hp" ${a.scaling === 'hp' ? 'selected' : ''}>生命值</option>
                         <option value="def" ${a.scaling === 'def' ? 'selected' : ''}>防御力</option>
                     </select>
-                    <span style="position:absolute; right:10px; top:10px; cursor:pointer; color:var(--accent)" 
+                    <span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--accent); font-size:1.2em; font-weight:bold;" 
                           onclick="sequence.splice(${i},1);renderSequence();calculate();">×</span>
                 </div>
                 <div style="margin-top:6px;">
