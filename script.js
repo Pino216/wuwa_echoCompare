@@ -157,7 +157,7 @@
     
         html += `
             <div style="margin-top:20px; display:flex; justify-content:space-between; gap:10px;">
-                <button onclick="this.closest('div').remove()" style="
+                <button onclick="closeCustomTypesPanel()" style="
                     flex:1;
                     background:linear-gradient(135deg, #8b949e, #6e7681);
                     color:white;
@@ -210,10 +210,7 @@
             updateAllDamageTypeSelects();
         
             // 关闭当前面板并重新打开以刷新列表
-            const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
-            const panel = document.querySelector('div[style*="min-width: 400px"]');
-            if (overlay) document.body.removeChild(overlay);
-            if (panel) document.body.removeChild(panel);
+            closeCustomTypesPanel();
         
             // 重新计算
             if (sequence.length > 0) {
@@ -223,6 +220,14 @@
             // 重新打开管理面板
             setTimeout(showCustomTypes, 100);
         }
+    }
+
+    // 关闭自定义类型管理面板
+    function closeCustomTypesPanel() {
+        const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
+        const panel = document.querySelector('div[style*="min-width: 400px"]');
+        if (overlay) document.body.removeChild(overlay);
+        if (panel) document.body.removeChild(panel);
     }
 
     function editCustomType(typeId) {
@@ -235,10 +240,7 @@
             updateAllDamageTypeSelects();
         
             // 关闭当前面板并重新打开以刷新列表
-            const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
-            const panel = document.querySelector('div[style*="min-width: 400px"]');
-            if (overlay) document.body.removeChild(overlay);
-            if (panel) document.body.removeChild(panel);
+            closeCustomTypesPanel();
         
             // 重新计算
             if (sequence.length > 0) {
