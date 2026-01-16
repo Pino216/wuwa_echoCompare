@@ -375,8 +375,17 @@
 
     // 添加页面加载时的视觉增强
     window.onload = () => {
-        initEchoSelects('echo_a');
-        initEchoSelects('echo_b');
+        // 确保只初始化一次声骸选择器
+        // 检查是否已经有行存在，如果没有才初始化
+        const echoAContainer = document.querySelector('#echo_a .substat-container');
+        const echoBContainer = document.querySelector('#echo_b .substat-container');
+        
+        if (echoAContainer && echoAContainer.children.length === 0) {
+            initEchoSelects('echo_a');
+        }
+        if (echoBContainer && echoBContainer.children.length === 0) {
+            initEchoSelects('echo_b');
+        }
         
         // 初始化伤害类型选择器
         updateAllDamageTypeSelects();
@@ -606,6 +615,8 @@
 
     function initEchoSelects(id) {
         const container = document.querySelector(`#${id} .substat-container`);
+        // 首先清空容器，确保只有5行
+        container.innerHTML = '';
         for(let i=0; i<5; i++) {
             const row = document.createElement('div');
             row.className = 'substat-row';
@@ -2218,26 +2229,37 @@ options: {
     function setEchoConfig(id, subs) {
         const container = document.querySelector(`#${id} .substat-container`);
         if (!container || !subs) return;
-            
-        // 确保有足够的行
-        const rows = container.querySelectorAll('.substat-row');
-        for (let i = 0; i < Math.max(subs.length, 5); i++) {
-            if (i >= rows.length) {
-                // 添加新行
-                const row = document.createElement('div');
-                row.className = 'substat-row';
-                let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
-                for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
-                nameSelect += `</select>`;
-                row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)debouncedCalculate()"><option value="0">0</option></select>`;
-                container.appendChild(row);
-            }
+        
+        // 首先清空容器
+        container.innerHTML = '';
+        
+        // 确保有足够的行，最多5行
+        const numRows = Math.min(subs.length, 5);
+        for (let i = 0; i < numRows; i++) {
+            const row = document.createElement('div');
+            row.className = 'substat-row';
+            let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
+            for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
+            nameSelect += `</select>`;
+            row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)debouncedCalculate()"><option value="0">0</option></select>`;
+            container.appendChild(row);
+        }
+        
+        // 如果subs少于5行，添加剩余的空行
+        for (let i = numRows; i < 5; i++) {
+            const row = document.createElement('div');
+            row.className = 'substat-row';
+            let nameSelect = `<select class="sub-name" onchange="updateSubValues(this)">`;
+            for(let key in SUBSTAT_DATA) nameSelect += `<option value="${key}">${SUBSTAT_DATA[key].name}</option>`;
+            nameSelect += `</select>`;
+            row.innerHTML = nameSelect + `<select class="sub-val" onchange="if(sequence.length>0)debouncedCalculate()"><option value="0">0</option></select>`;
+            container.appendChild(row);
         }
             
         // 更新值
         const updatedRows = container.querySelectorAll('.substat-row');
         subs.forEach((sub, i) => {
-            if (i < updatedRows.length) {
+            if (i < 5 && i < updatedRows.length) {
                 const row = updatedRows[i];
                 const nameSelect = row.querySelector('.sub-name');
                 const valSelect = row.querySelector('.sub-val');
