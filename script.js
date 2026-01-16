@@ -237,12 +237,18 @@
             }
         }, 60 * 1000); // 每分钟检查一次
 
+        // 初始化分页
+        setTimeout(() => {
+            renderBuffPagination();
+        }, 100);
+
         // 添加欢迎提示
         setTimeout(() => {
             console.log('🎮 鸣潮伤害分析工具已就绪！');
             console.log('📋 快捷键：Ctrl+S保存，Ctrl+Shift+S导出，Ctrl+L加载，Ctrl+R计算');
             console.log('📊 声骸词条修改实时计算已启用');
             console.log('💾 自动保存功能已启用（每5分钟）');
+            console.log('📄 Buff列表分页功能已启用（每页8个）');
             if (sequence.length === 0) {
                 console.log('⚠️ 当前动作序列为空，请添加动作后进行计算');
             }
@@ -275,6 +281,11 @@
         calculate(false);
     }
 
+    // 分页相关变量
+    let buffPage = 1;
+    const BUFFS_PER_PAGE = 8;
+    let totalBuffPages = 1;
+
     // --- Buff 核心逻辑 ---
     function addNewBuff() {
         const fixedId = 'b_' + Date.now();
@@ -296,11 +307,101 @@
                 <div class="input-row">
                     <select class="b-type" onchange="calculate()">${typeOptions}</select>
                     <input type="number" class="b-val" value="10" style="width:40px" oninput="calculate()">%
-                    <button onclick="this.parentElement.parentElement.remove(); renderSequence(); calculate();" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                    <button onclick="removeBuff('${fixedId}')" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                 </div>
             </div>`;
+        
+        // 添加到Buff池
         document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
+        
+        // 更新Buff池数据
+        updateBuffPool();
+        
+        // 重新渲染分页
+        renderBuffPagination();
+        
+        // 渲染序列
         renderSequence();
+    }
+
+    function removeBuff(buffId) {
+        const buffElement = document.querySelector(`.buff-config[data-id="${buffId}"]`);
+        if (buffElement) {
+            buffElement.remove();
+            updateBuffPool();
+            renderBuffPagination();
+            renderSequence();
+            calculate();
+        }
+    }
+
+    function renderBuffPagination() {
+        const buffPoolContainer = document.getElementById('buff_pool');
+        const allBuffs = buffPoolContainer.querySelectorAll('.buff-config');
+        const totalBuffs = allBuffs.length;
+        
+        // 计算总页数
+        totalBuffPages = Math.ceil(totalBuffs / BUFFS_PER_PAGE);
+        
+        // 如果当前页大于总页数，回到第一页
+        if (buffPage > totalBuffPages && totalBuffPages > 0) {
+            buffPage = totalBuffPages;
+        }
+        
+        // 隐藏所有Buff
+        allBuffs.forEach(buff => {
+            buff.style.display = 'none';
+        });
+        
+        // 显示当前页的Buff
+        const startIndex = (buffPage - 1) * BUFFS_PER_PAGE;
+        const endIndex = startIndex + BUFFS_PER_PAGE;
+        
+        for (let i = startIndex; i < endIndex && i < totalBuffs; i++) {
+            allBuffs[i].style.display = 'block';
+        }
+        
+        // 创建或更新分页控件
+        let paginationContainer = document.getElementById('buff_pagination');
+        if (!paginationContainer) {
+            paginationContainer = document.createElement('div');
+            paginationContainer.id = 'buff_pagination';
+            paginationContainer.style.marginTop = '10px';
+            paginationContainer.style.display = 'flex';
+            paginationContainer.style.justifyContent = 'center';
+            paginationContainer.style.alignItems = 'center';
+            paginationContainer.style.gap = '8px';
+            buffPoolContainer.parentNode.insertBefore(paginationContainer, buffPoolContainer.nextSibling);
+        }
+        
+        // 更新分页控件
+        if (totalBuffPages > 1) {
+            let paginationHTML = '';
+            
+            // 上一页按钮
+            paginationHTML += `<button class="pagination-btn" onclick="changeBuffPage(${buffPage - 1})" ${buffPage === 1 ? 'disabled' : ''}>◀</button>`;
+            
+            // 页码显示
+            paginationHTML += `<span style="font-size:12px; color:#8B4513; font-weight:bold;">${buffPage} / ${totalBuffPages}</span>`;
+            
+            // 下一页按钮
+            paginationHTML += `<button class="pagination-btn" onclick="changeBuffPage(${buffPage + 1})" ${buffPage === totalBuffPages ? 'disabled' : ''}>▶</button>`;
+            
+            // 添加Buff数量显示
+            paginationHTML += `<span style="margin-left:10px; font-size:11px; color:#8b949e;">共 ${totalBuffs} 个Buff</span>`;
+            
+            paginationContainer.innerHTML = paginationHTML;
+            paginationContainer.style.display = 'flex';
+        } else {
+            paginationContainer.style.display = 'none';
+        }
+    }
+
+    function changeBuffPage(newPage) {
+        if (newPage >= 1 && newPage <= totalBuffPages) {
+            buffPage = newPage;
+            renderBuffPagination();
+        }
     }
 
     function syncBuffNames(id, newName) {
@@ -321,6 +422,9 @@
                 val: parseFloat(el.querySelector('.b-val').value) / 100
             });
         });
+        
+        // 更新分页显示
+        renderBuffPagination();
     }
 
     // --- 动作序列逻辑 ---
@@ -1662,7 +1766,7 @@ options: {
                         <div class="input-row">
                             <select class="b-type" onchange="if(sequence.length>0)calculate(false)">${typeOptions}</select>
                             <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
-                            <button onclick="this.parentElement.parentElement.remove(); renderSequence(); if(sequence.length>0)calculate(false);" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                            <button onclick="removeBuff('${buff.id}')" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
                         </div>
                     </div>`;
                 document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
@@ -1698,6 +1802,9 @@ options: {
         updateBuffPool();
         updateAllDamageTypeSelects();
         renderSequence();
+        
+        // 渲染分页
+        renderBuffPagination();
         
         // 只有在不抑制计算时才调用calculate
         if (!suppressCalculate && sequence.length > 0) {

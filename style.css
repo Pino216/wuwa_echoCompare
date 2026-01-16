@@ -239,6 +239,33 @@
             background: rgba(139, 69, 19, 0.05) !important;
         }
 
+        /* 分页按钮样式 */
+        .pagination-btn {
+            background: rgba(139, 69, 19, 0.1);
+            border: 1px solid rgba(139, 69, 19, 0.3);
+            color: #8B4513;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            min-width: 30px;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(139, 69, 19, 0.2);
+            transform: scale(1.05);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
         /* 滚动条样式 */
         #damageComposition::-webkit-scrollbar {
             width: 6px;
