@@ -1577,7 +1577,7 @@ function getColorForType(typeId) {
         return details;
     }
 
-    // 显示详细加成信息到中间面板
+    // 显示详细加成信息到中间面板 - 按伤害类型分类统计
     function displayDetailedBonusInfo(detailedInfo) {
         // 获取中间面板的伤害组成容器
         let damageCompositionContainer = document.getElementById('damageComposition');
@@ -1600,128 +1600,185 @@ function getColorForType(typeId) {
         let html = `
             <div style="margin-top:20px; border-top:1px solid rgba(139, 69, 19, 0.3); padding-top:15px;">
                 <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
-                    详细加成分析（基于当前装备的声骸A）
+                    详细加成分析（按伤害类型分类）
                 </h3>
                 <div style="font-size:11px; color:#8b949e; margin-bottom:10px;">
-                    显示每个动作的实际倍率：攻击力/生命/防御加成、伤害加成倍率、伤害加深倍率
+                    按伤害类型统计平均加成倍率，未涉及的伤害类型不显示
                 </div>
         `;
 
-        // 为每个动作创建表格
-        detailedInfo.forEach(info => {
-            const damageTypeName = DAMAGE_TYPES.find(t => t.id === info.damageType)?.name || info.damageType;
-            const scalingName = {
-                'atk': '攻击力',
-                'hp': '生命值',
-                'def': '防御力'
-            }[info.scalingType] || info.scalingType;
+        // 1. 按伤害类型分组统计
+        const damageTypeGroups = {};
         
-            // 计算实际倍率
-            const totalAttrPct = (info.panelExistingPct || 0) + info.totalAttrBonusPct;
-            const attrMultiplier = 1 + totalAttrPct / 100;
-            const damageBonusMultiplier = 1 + info.totalDamageBonusPct / 100;
-            const damageDeepenMultiplier = 1 + info.totalDamageDeepenPct / 100;
-    
+        // 初始化分组
+        DAMAGE_TYPES.forEach(type => {
+            if (type.id !== 'all') {
+                damageTypeGroups[type.id] = {
+                    typeName: type.name,
+                    actions: [],
+                    scalingTypes: new Set(), // 记录涉及的基数类型
+                    totalAttrBonusPct: 0,
+                    totalDamageBonusPct: 0,
+                    totalDamageDeepenPct: 0,
+                    totalCritRate: 0,
+                    totalCritDamage: 0,
+                    totalCritMultiplier: 0,
+                    totalPanelExistingPct: 0,
+                    count: 0
+                };
+            }
+        });
+        
+        // 填充分组数据
+        detailedInfo.forEach(info => {
+            const group = damageTypeGroups[info.damageType];
+            if (group) {
+                group.actions.push(info.actionName);
+                group.scalingTypes.add(info.scalingType);
+                group.totalAttrBonusPct += info.totalAttrBonusPct;
+                group.totalDamageBonusPct += info.totalDamageBonusPct;
+                group.totalDamageDeepenPct += info.totalDamageDeepenPct;
+                group.totalCritRate += info.critRate;
+                group.totalCritDamage += info.critDamage;
+                group.totalCritMultiplier += info.critMultiplier;
+                group.totalPanelExistingPct += (info.panelExistingPct || 0);
+                group.count++;
+            }
+        });
+        
+        // 2. 只显示有数据的伤害类型
+        const validDamageTypes = Object.keys(damageTypeGroups).filter(typeId => 
+            damageTypeGroups[typeId].count > 0
+        );
+        
+        if (validDamageTypes.length === 0) {
             html += `
-                <div style="margin-bottom:15px; border:1px solid rgba(139, 69, 19, 0.2); border-radius:8px; padding:10px;">
-                    <div style="font-weight:bold; color:#8B4513; margin-bottom:8px;">
-                        ${info.actionName} (${damageTypeName}, 基于${scalingName})
-                    </div>
-                    <table style="width:100%; border-collapse:collapse; font-size:11px;">
-                        <thead>
-                            <tr style="background:rgba(139, 69, 19, 0.1);">
-                                <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">加成类型</th>
-                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">面板已有</th>
-                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">额外加成</th>
-                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">总加成</th>
-                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">实际倍率</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding:6px;">${scalingName}加成</td>
-                                <td style="padding:6px; text-align:right; color:#8b949e;">
-                                    ${(info.panelExistingPct || 0).toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
-                                    ${info.attrBonusPct > 0 ? '+' : ''}${info.attrBonusPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
-                                    ${totalAttrPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
-                                    ${attrMultiplier.toFixed(3)}倍
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding:6px;">伤害加成</td>
-                                <td style="padding:6px; text-align:right; color:#8b949e;">-</td>
-                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
-                                    ${info.damageBonusPct > 0 ? '+' : ''}${info.damageBonusPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
-                                    ${info.totalDamageBonusPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
-                                    ${damageBonusMultiplier.toFixed(3)}倍
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding:6px;">伤害加深</td>
-                                <td style="padding:6px; text-align:right; color:#8b949e;">-</td>
-                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
-                                    ${info.damageDeepenPct > 0 ? '+' : ''}${info.damageDeepenPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
-                                    ${info.totalDamageDeepenPct.toFixed(2)}%
-                                </td>
-                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
-                                    ${damageDeepenMultiplier.toFixed(3)}倍
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div style="text-align:center; color:#8b949e; padding:20px;">
+                    暂无有效的伤害类型数据
+                </div>
             `;
-    
-            // 显示应用的buff信息
-            if (info.appliedBuffs.length > 0) {
+        } else {
+            // 3. 为每个有数据的伤害类型创建统计表格
+            validDamageTypes.forEach(typeId => {
+                const group = damageTypeGroups[typeId];
+                const avgAttrBonusPct = group.totalAttrBonusPct / group.count;
+                const avgDamageBonusPct = group.totalDamageBonusPct / group.count;
+                const avgDamageDeepenPct = group.totalDamageDeepenPct / group.count;
+                const avgCritRate = group.totalCritRate / group.count;
+                const avgCritDamage = group.totalCritDamage / group.count;
+                const avgCritMultiplier = group.totalCritMultiplier / group.count;
+                const avgPanelExistingPct = group.totalPanelExistingPct / group.count;
+                
+                // 计算实际倍率
+                const totalAttrPct = avgPanelExistingPct + avgAttrBonusPct;
+                const attrMultiplier = 1 + totalAttrPct / 100;
+                const damageBonusMultiplier = 1 + avgDamageBonusPct / 100;
+                const damageDeepenMultiplier = 1 + avgDamageDeepenPct / 100;
+                
+                // 基数类型描述
+                const scalingTypesArray = Array.from(group.scalingTypes);
+                const scalingDesc = scalingTypesArray.map(type => {
+                    const names = { 'atk': '攻击力', 'hp': '生命值', 'def': '防御力' };
+                    return names[type] || type;
+                }).join('、');
+                
+                // 动作列表（最多显示3个）
+                const actionList = group.actions.length > 3 
+                    ? group.actions.slice(0, 3).join('、') + ` 等${group.actions.length}个动作`
+                    : group.actions.join('、');
+                
                 html += `
-                    <div style="margin-top:8px; font-size:10px; color:#8b949e;">
-                        <div>应用的Buff：</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-                `;
-                info.appliedBuffs.forEach(buff => {
-                    html += `
-                        <span style="background:rgba(139, 69, 19, 0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(139, 69, 19, 0.2);">
-                            ${buff.name} (${buff.type}+${buff.value.toFixed(1)}%)
-                        </span>
-                    `;
-                });
-                html += `
+                    <div style="margin-bottom:20px; border:2px solid ${getColorForType(typeId)}; border-radius:12px; padding:15px; background:rgba(255, 255, 255, 0.95);">
+                        <div style="display:flex; align-items:center; margin-bottom:12px;">
+                            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:8px; background:${getColorForType(typeId)};"></span>
+                            <div style="font-weight:bold; color:#8B4513; font-size:1.1em;">
+                                ${group.typeName} 伤害统计
+                            </div>
+                            <div style="margin-left:auto; font-size:11px; color:#8b949e;">
+                                共 ${group.count} 个动作
+                            </div>
+                        </div>
+                        
+                        <div style="font-size:11px; color:#8b949e; margin-bottom:10px; padding:8px; background:rgba(139, 69, 19, 0.05); border-radius:6px;">
+                            <div><strong>涉及动作：</strong>${actionList}</div>
+                            <div><strong>基数类型：</strong>${scalingDesc || '无'}</div>
+                        </div>
+                        
+                        <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                            <thead>
+                                <tr style="background:rgba(139, 69, 19, 0.1);">
+                                    <th style="padding:8px; text-align:left; border-bottom:2px solid rgba(139, 69, 19, 0.3);">加成类型</th>
+                                    <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">面板已有</th>
+                                    <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">额外加成</th>
+                                    <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">总加成</th>
+                                    <th style="padding:8px; text-align:right; border-bottom:2px solid rgba(139, 69, 19, 0.3);">实际倍率</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding:8px;">属性加成</td>
+                                    <td style="padding:8px; text-align:right; color:#8b949e;">
+                                        ${avgPanelExistingPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                        ${avgAttrBonusPct > 0 ? '+' : ''}${avgAttrBonusPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                        ${totalAttrPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                        ${attrMultiplier.toFixed(3)}倍
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px;">伤害加成</td>
+                                    <td style="padding:8px; text-align:right; color:#8b949e;">-</td>
+                                    <td style="padding:8px; text-align:right; color:#ff9800; font-weight:bold;">
+                                        ${avgDamageBonusPct > 0 ? '+' : ''}${avgDamageBonusPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#ff9800; font-weight:bold;">
+                                        ${avgDamageBonusPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#ff9800; font-weight:bold;">
+                                        ${damageBonusMultiplier.toFixed(3)}倍
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px;">伤害加深</td>
+                                    <td style="padding:8px; text-align:right; color:#8b949e;">-</td>
+                                    <td style="padding:8px; text-align:right; color:#4caf50; font-weight:bold;">
+                                        ${avgDamageDeepenPct > 0 ? '+' : ''}${avgDamageDeepenPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#4caf50; font-weight:bold;">
+                                        ${avgDamageDeepenPct.toFixed(2)}%
+                                    </td>
+                                    <td style="padding:8px; text-align:right; color:#4caf50; font-weight:bold;">
+                                        ${damageDeepenMultiplier.toFixed(3)}倍
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div style="margin-top:12px; font-size:11px; color:#8b949e; background:rgba(139, 69, 19, 0.05); padding:10px; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                                <div>
+                                    <span>平均暴击率：</span>
+                                    <strong style="color:#ff4081;">${avgCritRate.toFixed(1)}%</strong>
+                                </div>
+                                <div>
+                                    <span>平均暴击伤害：</span>
+                                    <strong style="color:#ff4081;">${avgCritDamage.toFixed(1)}%</strong>
+                                </div>
+                                <div>
+                                    <span>平均暴击期望倍率：</span>
+                                    <strong style="color:#ff4081;">${avgCritMultiplier.toFixed(3)}倍</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
-            } else {
-                html += `
-                    <div style="margin-top:8px; font-size:10px; color:#8b949e;">
-                        未应用任何动态Buff
-                    </div>
-                `;
-            }
-        
-            // 添加暴击信息
-            html += `
-                <div style="margin-top:8px; font-size:10px; color:#8b949e; background:rgba(139, 69, 19, 0.05); padding:6px; border-radius:4px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>暴击率：<strong style="color:#ff4081;">${info.critRate.toFixed(1)}%</strong></span>
-                        <span>暴击伤害：<strong style="color:#ff4081;">${info.critDamage.toFixed(1)}%</strong></span>
-                        <span>暴击期望倍率：<strong style="color:#ff4081;">${info.critMultiplier.toFixed(3)}倍</strong></span>
-                    </div>
-                </div>
-            `;
-        
-            html += `</div>`;
-        });
+            });
+        }
 
         // 添加总计信息 - 分别统计不同基数的属性加成
         // 分别统计攻击、生命、防御的加成
