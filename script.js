@@ -2637,7 +2637,10 @@ options: {
                         echo_a: getEchoConfig('echo_a'),
                         echo_b: getEchoConfig('echo_b')
                     },
-                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'))
+                    damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
+                        id: t.id,
+                        name: t.name
+                    }))
                 };
             }
             
@@ -3365,6 +3368,23 @@ options: {
             document.getElementById('base_cd').value = data.character.base_cd || '';
         }
         
+        // 恢复自定义伤害类型（必须在恢复其他配置之前）
+        if (data.damage_types && Array.isArray(data.damage_types)) {
+            // 移除现有的自定义类型
+            DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
+            // 添加导入的自定义类型
+            data.damage_types.forEach(t => {
+                // 确保自定义类型ID以'custom_'开头
+                const typeId = t.id.startsWith('custom_') ? t.id : 'custom_' + t.id;
+                DAMAGE_TYPES.push({
+                    id: typeId,
+                    name: t.name
+                });
+            });
+            // 立即更新所有选择器
+            updateAllDamageTypeSelects();
+        }
+        
         // 恢复静态加成
         if (data.static_bonus && Array.isArray(data.static_bonus)) {
             setStaticBonusConfig(data.static_bonus);
@@ -3416,16 +3436,6 @@ options: {
             if (data.echoes.echo_b) {
                 setEchoConfig('echo_b', data.echoes.echo_b);
             }
-        }
-        
-        // 恢复自定义伤害类型
-        if (data.damage_types && Array.isArray(data.damage_types)) {
-            // 移除现有的自定义类型
-            DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
-            // 添加导入的自定义类型
-            data.damage_types.forEach(t => {
-                DAMAGE_TYPES.push(t);
-            });
         }
         
         // 更新界面
@@ -3639,9 +3649,11 @@ options: {
                         const typeId = row[0];
                         const typeName = row[1];
                         
-                        if (typeId && typeName && typeId.startsWith('custom_')) {
+                        if (typeId && typeName) {
+                            // 确保ID以'custom_'开头
+                            const finalTypeId = typeId.startsWith('custom_') ? typeId : 'custom_' + typeId;
                             importData.damage_types.push({
-                                id: typeId,
+                                id: finalTypeId,
                                 name: typeName
                             });
                             importData.hasData.damage_types = true;
@@ -3787,6 +3799,23 @@ options: {
     // 执行Excel导入
     function executeXLSXImport(importData) {
         try {
+            // 6. 导入自定义伤害类型（必须在其他配置之前）
+            if (importData.hasData.damage_types) {
+                // 移除现有的自定义类型
+                DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
+                // 添加导入的自定义类型
+                importData.damage_types.forEach(t => {
+                    // 确保自定义类型ID以'custom_'开头
+                    const typeId = t.id.startsWith('custom_') ? t.id : 'custom_' + t.id;
+                    DAMAGE_TYPES.push({
+                        id: typeId,
+                        name: t.name
+                    });
+                });
+                // 立即更新所有选择器
+                updateAllDamageTypeSelects();
+            }
+            
             // 1. 导入基础面板数据
             if (importData.hasData.character) {
                 if (importData.character.base_hp !== undefined) document.getElementById('base_hp').value = importData.character.base_hp;
@@ -3850,16 +3879,6 @@ options: {
                 if (importData.echoes.echo_b) {
                     setEchoConfig('echo_b', importData.echoes.echo_b);
                 }
-            }
-            
-            // 6. 导入自定义伤害类型
-            if (importData.hasData.damage_types) {
-                // 移除现有的自定义类型
-                DAMAGE_TYPES = DAMAGE_TYPES.filter(t => !t.id.startsWith('custom_'));
-                // 添加导入的自定义类型
-                importData.damage_types.forEach(t => {
-                    DAMAGE_TYPES.push(t);
-                });
             }
             
             // 更新界面
