@@ -828,13 +828,12 @@ function runSim(extraSubs = []) {
     const baseHp = parseFloat(document.getElementById('base_hp')?.value) || 0;
     const totalHpNow = parseFloat(document.getElementById('total_hp_now')?.value) || 0;
     const baseDef = parseFloat(document.getElementById('base_def').value) || 0;
-    const totalDefNow = parseFloat(document.getElementById('total_def_now').value) || 0;
+    const totalDefNow = parseFloat(document.getElementById('total_def_now')?.value) || 0;
 
     const panelCr = parseFloat(document.getElementById('base_cr').value) / 100 || 0;
     const panelCd = parseFloat(document.getElementById('base_cd').value) / 100 || 0;
 
     // 2. 固定加成 (来自静态列表)
-    // 初始化staticBonusMap，包含所有DAMAGE_TYPES
     let staticBonusMap = { all:0 };
     DAMAGE_TYPES.forEach(t => {
         staticBonusMap[t.id] = 0;
@@ -849,11 +848,9 @@ function runSim(extraSubs = []) {
         }
     });
 
-    // 3. 处理副词条加成 (需增加生命和防御属性识别)
+    // 3. 处理副词条加成
     let subValues = { atk_pct: 0, hp_pct: 0, def_pct: 0, cr: 0, cd: 0 };
     let subFlatValues = { atk_flat: 0, hp_flat: 0, def_flat: 0 };
-    // 初始化subBonus，包含所有DAMAGE_TYPES中除了'all'的类型
-    // 注意：声骸副词条只包含普攻、重击、共鸣技能、共鸣解放四种类型
     let subBonus = {};
     DAMAGE_TYPES.forEach(t => {
         if (t.id !== 'all') {
@@ -870,14 +867,17 @@ function runSim(extraSubs = []) {
             if(subValues[d.type] !== undefined) subValues[d.type] += v;
             else if(subBonus[d.type] !== undefined) subBonus[d.type] += v;
         } else {
-            // 处理固定值词条
             if(subFlatValues[d.type] !== undefined) subFlatValues[d.type] += s.val;
         }
     });
 
-    // 动态初始化typeDmg，包含所有DAMAGE_TYPES中除了'all'的类型
+    // 计算面板已经包含的百分比加成
+    // 面板总属性 = 基础属性 * (1 + 面板已有百分比加成) + 面板已有固定值
+    // 我们需要从面板总属性中反推出面板已有百分比加成
+    // 但为了简化，我们假设面板总属性已经包含了所有装备、圣遗物等的加成
+    // 而extraSubs只包含声骸词条和buff的额外加成
+    
     let typeDmg = {};
-    // 初始化typeDmg
     DAMAGE_TYPES.forEach(t => {
         if (t.id !== 'all') {
             typeDmg[t.id] = 0;
@@ -885,7 +885,6 @@ function runSim(extraSubs = []) {
     });
     let totalDmg = 0;
     
-    // 新增：收集每个动作的详细加成信息
     let detailedInfo = [];
 
     // 4. 遍历动作序列计算
@@ -893,7 +892,7 @@ function runSim(extraSubs = []) {
         // 根据动作设定的基数(scaling)初始化基础值
         let baseStat = baseAtk;
         let currentTotalStat = totalAtkNow;
-        let scalingAttrKey = 'atk_pct'; // 对应的百分比Buff分类
+        let scalingAttrKey = 'atk_pct';
 
         if (a.scaling === 'hp') {
             baseStat = baseHp;
@@ -905,13 +904,16 @@ function runSim(extraSubs = []) {
             scalingAttrKey = 'def_pct';
         }
 
-        let curAttrPct = subValues[scalingAttrKey]; // 当前动作对应属性的副词条加成
+        // 当前面板总属性已经包含了所有装备、圣遗物等的加成
+        // 我们需要计算额外加成（来自声骸词条和buff）
+        // 初始时，curAttrPct只包含extraSubs中的百分比加成
+        let curAttrPct = subValues[scalingAttrKey];
         let curCr = panelCr + subValues.cr;
         let curCd = panelCd + subValues.cd;
         let curBonus = 1 + staticBonusMap.all + staticBonusMap[a.type] + (subBonus[a.type] || 0);
         let curDeepen = 1;
 
-        // 获取固定值加成
+        // 固定值加成
         let curFlatValue = 0;
         if (a.scaling === 'atk') {
             curFlatValue = subFlatValues.atk_flat;
@@ -920,14 +922,12 @@ function runSim(extraSubs = []) {
         } else if (a.scaling === 'def') {
             curFlatValue = subFlatValues.def_flat;
         }
-        
 
         // 记录初始值
         const initialAttrPct = curAttrPct;
-        const initialBonus = curBonus - 1; // 减去基数1
-        const initialDeepen = curDeepen - 1; // 减去基数1
+        const initialBonus = curBonus - 1;
+        const initialDeepen = curDeepen - 1;
         
-        // 记录应用的buff信息
         let appliedBuffs = [];
 
         // 5. 应用动态 Buff
@@ -943,7 +943,7 @@ function runSim(extraSubs = []) {
                     appliedBuffs.push({name: b.name, type: '伤害加深', value: b.val * 100});
                 }
                 else if(b.cat === scalingAttrKey) {
-                    curAttrPct += b.val; // 仅应用匹配基数的属性Buff
+                    curAttrPct += b.val;
                     appliedBuffs.push({name: b.name, type: '属性加成', value: b.val * 100});
                 }
                 else if(b.cat === 'cr') {
@@ -957,12 +957,39 @@ function runSim(extraSubs = []) {
             }
         });
 
-        // 最终属性计算：基于基础数值计算所有加成
-        // 百分比加成以基础数值作为计算标准
-        const finalScalingValue = baseStat * (1 + curAttrPct) + curFlatValue;
+        // 最终属性计算：
+        // 面板总属性已经包含了基础加成，我们只需要加上额外加成
+        // 额外加成包括：声骸词条百分比、buff百分比、固定值
+        // 注意：面板总属性 = 基础属性 * (1 + 面板已有百分比) + 面板已有固定值
+        // 最终属性 = 基础属性 * (1 + 面板已有百分比 + 额外百分比) + (面板已有固定值 + 额外固定值)
+        // 但面板已有固定值未知，所以我们需要从面板总属性中推导
+        
+        // 计算面板已有百分比加成（从面板总属性和基础属性推导）
+        // 面板总属性 = 基础属性 * (1 + 面板已有百分比) + 面板已有固定值
+        // 假设面板已有固定值为0，则面板已有百分比 = (面板总属性 / 基础属性) - 1
+        let panelExistingPct = 0;
+        let panelExistingFlat = 0;
+        if (baseStat > 0) {
+            // 尝试估算面板已有百分比和固定值
+            // 假设面板已有百分比是使得面板总属性大于基础属性的主要因素
+            // 简单处理：假设面板已有固定值为0，计算百分比
+            panelExistingPct = (currentTotalStat / baseStat) - 1;
+            // 如果计算出的百分比不合理（比如负数），则调整
+            if (panelExistingPct < 0) {
+                panelExistingPct = 0;
+                panelExistingFlat = currentTotalStat - baseStat;
+            }
+        }
+        
+        // 总百分比 = 面板已有百分比 + 额外百分比
+        const totalPct = panelExistingPct + curAttrPct;
+        // 总固定值 = 面板已有固定值 + 额外固定值
+        const totalFlat = panelExistingFlat + curFlatValue;
+        
+        // 最终属性
+        const finalScalingValue = baseStat * (1 + totalPct) + totalFlat;
+        
         const critExp = 1 + Math.min(1, curCr) * (curCd - 1);
-
-        // 核心伤害公式
         const dmg = finalScalingValue * a.mult * curBonus * curDeepen * critExp;
 
         typeDmg[a.type] += dmg;
@@ -972,26 +999,33 @@ function runSim(extraSubs = []) {
         detailedInfo.push({
             actionName: a.name,
             actionIndex: index,
-            attrBonusPct: (curAttrPct - initialAttrPct) * 100, // 额外攻击力/生命/防御加成百分比
-            totalAttrBonusPct: curAttrPct * 100, // 总属性加成百分比
-            damageBonusPct: (curBonus - 1 - initialBonus) * 100, // 额外伤害加成百分比
-            totalDamageBonusPct: (curBonus - 1) * 100, // 总伤害加成百分比
-            damageDeepenPct: (curDeepen - 1 - initialDeepen) * 100, // 额外伤害加深百分比
-            totalDamageDeepenPct: (curDeepen - 1) * 100, // 总伤害加深百分比
+            attrBonusPct: (curAttrPct - initialAttrPct) * 100,
+            totalAttrBonusPct: curAttrPct * 100,
+            // 注意：这里显示的是额外加成，不是总加成
+            // 总加成百分比 = 面板已有百分比 + 额外百分比
+            panelExistingPct: panelExistingPct * 100,
+            damageBonusPct: (curBonus - 1 - initialBonus) * 100,
+            totalDamageBonusPct: (curBonus - 1) * 100,
+            damageDeepenPct: (curDeepen - 1 - initialDeepen) * 100,
+            totalDamageDeepenPct: (curDeepen - 1) * 100,
             appliedBuffs: appliedBuffs,
             scalingType: a.scaling,
             damageType: a.type,
-            // 新增：暴击相关信息
-            critRate: curCr * 100, // 暴击率百分比
-            critDamage: curCd * 100, // 暴击伤害百分比
-            critMultiplier: critExp // 暴击期望倍率
+            critRate: curCr * 100,
+            critDamage: curCd * 100,
+            critMultiplier: critExp,
+            // 新增：最终属性计算相关信息
+            finalScalingValue: finalScalingValue,
+            baseStat: baseStat,
+            totalPct: totalPct * 100,
+            totalFlat: totalFlat
         });
     });
 
     return { 
         totalDmg, 
         typeDmg,
-        detailedInfo  // 新增：返回详细加成信息
+        detailedInfo
     };
 }
 
@@ -1566,12 +1600,12 @@ function getColorForType(typeId) {
                 'def': '防御力'
             }[info.scalingType] || info.scalingType;
             
-            // 计算实际倍率（百分比转换为小数倍率）
-            // 属性加成倍率 = 1 + 总属性加成百分比/100
-            const attrMultiplier = 1 + info.totalAttrBonusPct / 100;
-            // 伤害加成倍率 = 1 + 总伤害加成百分比/100
+            // 计算实际倍率
+            // 注意：info.totalAttrBonusPct 是额外加成百分比，不是总加成百分比
+            // 总属性加成百分比 = 面板已有百分比 + 额外百分比
+            const totalAttrPct = (info.panelExistingPct || 0) + info.totalAttrBonusPct;
+            const attrMultiplier = 1 + totalAttrPct / 100;
             const damageBonusMultiplier = 1 + info.totalDamageBonusPct / 100;
-            // 伤害加深倍率 = 1 + 总伤害加深百分比/100
             const damageDeepenMultiplier = 1 + info.totalDamageDeepenPct / 100;
         
             html += `
@@ -1583,6 +1617,7 @@ function getColorForType(typeId) {
                         <thead>
                             <tr style="background:rgba(139, 69, 19, 0.1);">
                                 <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">加成类型</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">面板已有</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">额外加成</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">总加成</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">实际倍率</th>
@@ -1591,11 +1626,14 @@ function getColorForType(typeId) {
                         <tbody>
                             <tr>
                                 <td style="padding:6px;">${scalingName}加成</td>
+                                <td style="padding:6px; text-align:right; color:#8b949e;">
+                                    ${(info.panelExistingPct || 0).toFixed(2)}%
+                                </td>
                                 <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
                                     ${info.attrBonusPct > 0 ? '+' : ''}${info.attrBonusPct.toFixed(2)}%
                                 </td>
-                                <td style="padding:6px; text-align:right; color:#4a6bff;">
-                                    ${info.totalAttrBonusPct.toFixed(2)}%
+                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                    ${totalAttrPct.toFixed(2)}%
                                 </td>
                                 <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
                                     ${attrMultiplier.toFixed(3)}倍
@@ -1603,10 +1641,11 @@ function getColorForType(typeId) {
                             </tr>
                             <tr>
                                 <td style="padding:6px;">伤害加成</td>
+                                <td style="padding:6px; text-align:right; color:#8b949e;">-</td>
                                 <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
                                     ${info.damageBonusPct > 0 ? '+' : ''}${info.damageBonusPct.toFixed(2)}%
                                 </td>
-                                <td style="padding:6px; text-align:right; color:#ff9800;">
+                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
                                     ${info.totalDamageBonusPct.toFixed(2)}%
                                 </td>
                                 <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
@@ -1615,10 +1654,11 @@ function getColorForType(typeId) {
                             </tr>
                             <tr>
                                 <td style="padding:6px;">伤害加深</td>
+                                <td style="padding:6px; text-align:right; color:#8b949e;">-</td>
                                 <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
                                     ${info.damageDeepenPct > 0 ? '+' : ''}${info.damageDeepenPct.toFixed(2)}%
                                 </td>
-                                <td style="padding:6px; text-align:right; color:#4caf50;">
+                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
                                     ${info.totalDamageDeepenPct.toFixed(2)}%
                                 </td>
                                 <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
