@@ -52,17 +52,14 @@
                     calculate(false);
                 }
             
-                // 如果管理面板是打开的，刷新它
-                const panel = document.querySelector('div[style*="min-width: 400px"]');
-                if (panel) {
-                    // 关闭当前面板并重新打开
-                    const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
-                    if (overlay) document.body.removeChild(overlay);
-                    document.body.removeChild(panel);
-                    setTimeout(showCustomTypes, 100);
-                } else {
-                    alert('✅ 已删除自定义伤害类型');
-                }
+                // 首先完全关闭管理面板，确保移除所有相关元素
+                closeCustomTypesPanel();
+                
+                // 然后重新打开管理面板
+                setTimeout(showCustomTypes, 100);
+                
+                // 显示成功消息
+                alert('✅ 已删除自定义伤害类型');
             }
         } else {
             alert('❌ 系统默认类型不能删除');
@@ -271,6 +268,30 @@
                 }
             });
         }
+        
+        // 额外清理：确保没有残留的遮罩层
+        // 查找所有固定定位且背景为半透明的元素
+        const allFixedElements = document.querySelectorAll('body > div');
+        allFixedElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.position === 'fixed') {
+                // 检查是否是遮罩层（半透明黑色背景）
+                const bgColor = style.backgroundColor;
+                if (bgColor.includes('rgba(0, 0, 0, 0.5)') || 
+                    bgColor === 'rgba(0, 0, 0, 0.5)' ||
+                    (style.background && style.background.includes('rgba(0, 0, 0, 0.5)'))) {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+                // 检查是否是管理面板
+                else if (el.innerHTML && el.innerHTML.includes('管理自定义伤害类型')) {
+                    if (el.parentNode === document.body) {
+                        document.body.removeChild(el);
+                    }
+                }
+            }
+        });
     }
 
     function editCustomType(typeId) {
