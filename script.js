@@ -533,6 +533,11 @@
         
             if (sequence.length === 0) {
                 console.log('⚠️ 当前动作序列为空，请添加动作后进行计算');
+                // 隐藏详细加成信息容器
+                const bonusContainer = document.getElementById('detailed_bonus_info');
+                if (bonusContainer) {
+                    bonusContainer.style.display = 'none';
+                }
             }
         }, 500);
     };
@@ -1167,6 +1172,11 @@ function getColorForType(typeId) {
             }
             // 清空结果显示区域
             document.getElementById('compare_res').innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">请添加动作序列后点击"执行全量化分析"</div>';
+            // 隐藏详细加成信息
+            const bonusContainer = document.getElementById('detailed_bonus_info');
+            if (bonusContainer) {
+                bonusContainer.style.display = 'none';
+            }
             // 清空图表
             const ctx = document.getElementById('dmgChart').getContext('2d');
             if (dmgChart) dmgChart.destroy();
@@ -1510,9 +1520,10 @@ function getColorForType(typeId) {
 
     // 显示详细加成信息
     function displayDetailedBonusInfo(detailedInfo) {
-        // 创建一个新的容器来显示加成信息
+        // 获取预定义的容器
         let bonusContainer = document.getElementById('detailed_bonus_info');
         if (!bonusContainer) {
+            // 如果容器不存在，创建一个
             bonusContainer = document.createElement('div');
             bonusContainer.id = 'detailed_bonus_info';
             bonusContainer.style.cssText = `
@@ -1528,6 +1539,9 @@ function getColorForType(typeId) {
             const compareRes = document.getElementById('compare_res');
             compareRes.parentNode.insertBefore(bonusContainer, compareRes);
         }
+        
+        // 显示容器
+        bonusContainer.style.display = 'block';
     
         if (detailedInfo.length === 0) {
             bonusContainer.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无加成信息</div>';
