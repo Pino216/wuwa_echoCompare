@@ -1572,45 +1572,36 @@ function getColorForType(typeId) {
         return details;
     }
 
-    // 显示详细加成信息
+    // 显示详细加成信息到中间面板
     function displayDetailedBonusInfo(detailedInfo) {
-        // 获取预定义的容器
-        let bonusContainer = document.getElementById('detailed_bonus_info');
-        if (!bonusContainer) {
-            // 如果容器不存在，创建一个
-            bonusContainer = document.createElement('div');
-            bonusContainer.id = 'detailed_bonus_info';
-            bonusContainer.style.cssText = `
-                margin-top: 20px;
-                background: rgba(255, 255, 255, 0.9);
-                border-radius: 12px;
-                padding: 15px;
-                border: 1px solid rgba(139, 69, 19, 0.3);
-                max-height: 400px;
-                overflow-y: auto;
-            `;
-            // 插入到结果区域之前
-            const compareRes = document.getElementById('compare_res');
-            compareRes.parentNode.insertBefore(bonusContainer, compareRes);
-        }
-        
-        // 显示容器
-        bonusContainer.style.display = 'block';
-    
-        if (detailedInfo.length === 0) {
-            bonusContainer.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无加成信息</div>';
+        // 获取中间面板的伤害组成容器
+        let damageCompositionContainer = document.getElementById('damageComposition');
+        if (!damageCompositionContainer) {
+            console.error('找不到伤害组成容器');
             return;
         }
+
+        if (detailedInfo.length === 0) {
+            // 如果已经有伤害组成表格，不要覆盖它
+            if (!damageCompositionContainer.innerHTML.includes('伤害组成详情')) {
+                damageCompositionContainer.innerHTML = '<div style="text-align:center; color:#8b949e; padding:20px;">暂无加成信息</div>';
+            }
+            return;
+        }
+
+        // 保存原有的伤害组成表格
+        const originalDamageComposition = damageCompositionContainer.innerHTML;
     
         let html = `
-            <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
-                详细加成分析（基于当前装备的声骸A）
-            </h3>
-            <div style="font-size:11px; color:#8b949e; margin-bottom:10px;">
-                显示每个动作的实际倍率：攻击力/生命/防御加成、伤害加成倍率、伤害加深倍率
-            </div>
+            <div style="margin-top:20px; border-top:1px solid rgba(139, 69, 19, 0.3); padding-top:15px;">
+                <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
+                    详细加成分析（基于当前装备的声骸A）
+                </h3>
+                <div style="font-size:11px; color:#8b949e; margin-bottom:10px;">
+                    显示每个动作的实际倍率：攻击力/生命/防御加成、伤害加成倍率、伤害加深倍率
+                </div>
         `;
-    
+
         // 为每个动作创建表格
         detailedInfo.forEach(info => {
             const damageTypeName = DAMAGE_TYPES.find(t => t.id === info.damageType)?.name || info.damageType;
@@ -1619,15 +1610,13 @@ function getColorForType(typeId) {
                 'hp': '生命值',
                 'def': '防御力'
             }[info.scalingType] || info.scalingType;
-            
+        
             // 计算实际倍率
-            // 注意：info.totalAttrBonusPct 是额外加成百分比，不是总加成百分比
-            // 总属性加成百分比 = 面板已有百分比 + 额外百分比
             const totalAttrPct = (info.panelExistingPct || 0) + info.totalAttrBonusPct;
             const attrMultiplier = 1 + totalAttrPct / 100;
             const damageBonusMultiplier = 1 + info.totalDamageBonusPct / 100;
             const damageDeepenMultiplier = 1 + info.totalDamageDeepenPct / 100;
-        
+    
             html += `
                 <div style="margin-bottom:15px; border:1px solid rgba(139, 69, 19, 0.2); border-radius:8px; padding:10px;">
                     <div style="font-weight:bold; color:#8B4513; margin-bottom:8px;">
@@ -1688,7 +1677,7 @@ function getColorForType(typeId) {
                         </tbody>
                     </table>
             `;
-        
+    
             // 显示应用的buff信息
             if (info.appliedBuffs.length > 0) {
                 html += `
@@ -1714,7 +1703,7 @@ function getColorForType(typeId) {
                     </div>
                 `;
             }
-            
+        
             // 添加暴击信息
             html += `
                 <div style="margin-top:8px; font-size:10px; color:#8b949e; background:rgba(139, 69, 19, 0.05); padding:6px; border-radius:4px;">
@@ -1725,25 +1714,25 @@ function getColorForType(typeId) {
                     </div>
                 </div>
             `;
-            
+        
             html += `</div>`;
         });
-    
+
         // 添加总计信息
         const totalAttrBonus = detailedInfo.reduce((sum, info) => sum + info.attrBonusPct, 0);
         const totalDamageBonus = detailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
         const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
-        
+    
         // 计算平均实际倍率
         const avgAttrMultiplier = 1 + (totalAttrBonus / detailedInfo.length) / 100;
         const avgDamageBonusMultiplier = 1 + (totalDamageBonus / detailedInfo.length) / 100;
         const avgDamageDeepenMultiplier = 1 + (totalDamageDeepen / detailedInfo.length) / 100;
-        
+    
         // 计算平均暴击信息
         const avgCritRate = detailedInfo.reduce((sum, info) => sum + info.critRate, 0) / detailedInfo.length;
         const avgCritDamage = detailedInfo.reduce((sum, info) => sum + info.critDamage, 0) / detailedInfo.length;
         const avgCritMultiplier = detailedInfo.reduce((sum, info) => sum + info.critMultiplier, 0) / detailedInfo.length;
-    
+
         html += `
             <div style="margin-top:15px; border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
                 <div style="font-weight:bold; color:#8B4513; margin-bottom:5px;">总计加成（所有动作平均）</div>
@@ -1776,9 +1765,18 @@ function getColorForType(typeId) {
                     💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)
                 </div>
             </div>
+            </div>
         `;
+
+        // 将详细加成信息添加到伤害组成容器中
+        // 注意：这里我们保留原有的伤害组成表格，将详细加成信息添加在后面
+        damageCompositionContainer.innerHTML = originalDamageComposition + html;
     
-        bonusContainer.innerHTML = html;
+        // 隐藏声骸区下方的详细加成信息容器
+        const bonusContainer = document.getElementById('detailed_bonus_info');
+        if (bonusContainer) {
+            bonusContainer.style.display = 'none';
+        }
     }
 
     // 获取词条名称
