@@ -1720,6 +1720,19 @@ function getColorForType(typeId) {
 
         // 添加总计信息 - 分别统计不同基数的属性加成
         // 分别统计攻击、生命、防御的加成
+        // 首先获取面板基础数据
+        const baseAtk = parseFloat(document.getElementById('base_atk').value) || 0;
+        const totalAtkNow = parseFloat(document.getElementById('total_atk_now').value) || 0;
+        const baseHp = parseFloat(document.getElementById('base_hp')?.value) || 0;
+        const totalHpNow = parseFloat(document.getElementById('total_hp_now')?.value) || 0;
+        const baseDef = parseFloat(document.getElementById('base_def').value) || 0;
+        const totalDefNow = parseFloat(document.getElementById('total_def_now')?.value) || 0;
+        
+        // 计算面板已有百分比加成
+        const panelAtkPct = baseAtk > 0 ? ((totalAtkNow / baseAtk) - 1) * 100 : 0;
+        const panelHpPct = baseHp > 0 ? ((totalHpNow / baseHp) - 1) * 100 : 0;
+        const panelDefPct = baseDef > 0 ? ((totalDefNow / baseDef) - 1) * 100 : 0;
+        
         let totalAtkBonus = 0;
         let totalHpBonus = 0;
         let totalDefBonus = 0;
@@ -1729,15 +1742,18 @@ function getColorForType(typeId) {
         const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
     
         // 分别统计不同基数的属性加成
+        // 注意：info.attrBonusPct 只包含声骸和Buff带来的额外加成
+        // 我们需要加上面板已有加成
         detailedInfo.forEach(info => {
             if (info.scalingType === 'atk') {
-                totalAtkBonus += info.attrBonusPct;
+                // 总加成 = 面板已有加成 + 额外加成
+                totalAtkBonus += panelAtkPct + info.attrBonusPct;
                 atkCount++;
             } else if (info.scalingType === 'hp') {
-                totalHpBonus += info.attrBonusPct;
+                totalHpBonus += panelHpPct + info.attrBonusPct;
                 hpCount++;
             } else if (info.scalingType === 'def') {
-                totalDefBonus += info.attrBonusPct;
+                totalDefBonus += panelDefPct + info.attrBonusPct;
                 defCount++;
             }
         });
@@ -1764,14 +1780,21 @@ function getColorForType(typeId) {
             const avgAtkBonus = totalAtkBonus / atkCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均额外攻击加成：</span>
+                    <span>平均攻击加成（总）：</span>
                     <span style="color:#4a6bff; font-weight:bold;">${avgAtkBonus.toFixed(2)}% (${avgAtkMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+            // 显示面板已有加成和额外加成的细分
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; padding-left:10px; color:#8b949e;">
+                    <span>├─ 面板已有：${panelAtkPct.toFixed(2)}%</span>
+                    <span>额外：${(avgAtkBonus - panelAtkPct).toFixed(2)}%</span>
                 </div>
             `;
         } else {
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
-                    <span>平均额外攻击加成：</span>
+                    <span>平均攻击加成：</span>
                     <span>无基于攻击的动作</span>
                 </div>
             `;
@@ -1780,14 +1803,21 @@ function getColorForType(typeId) {
             const avgHpBonus = totalHpBonus / hpCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均额外生命加成：</span>
+                    <span>平均生命加成（总）：</span>
                     <span style="color:#4a6bff; font-weight:bold;">${avgHpBonus.toFixed(2)}% (${avgHpMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+            // 显示面板已有加成和额外加成的细分
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; padding-left:10px; color:#8b949e;">
+                    <span>├─ 面板已有：${panelHpPct.toFixed(2)}%</span>
+                    <span>额外：${(avgHpBonus - panelHpPct).toFixed(2)}%</span>
                 </div>
             `;
         } else {
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
-                    <span>平均额外生命加成：</span>
+                    <span>平均生命加成：</span>
                     <span>无基于生命的动作</span>
                 </div>
             `;
@@ -1796,14 +1826,21 @@ function getColorForType(typeId) {
             const avgDefBonus = totalDefBonus / defCount;
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均额外防御加成：</span>
+                    <span>平均防御加成（总）：</span>
                     <span style="color:#4a6bff; font-weight:bold;">${avgDefBonus.toFixed(2)}% (${avgDefMultiplier.toFixed(3)}倍)</span>
+                </div>
+            `;
+            // 显示面板已有加成和额外加成的细分
+            html += `
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; padding-left:10px; color:#8b949e;">
+                    <span>├─ 面板已有：${panelDefPct.toFixed(2)}%</span>
+                    <span>额外：${(avgDefBonus - panelDefPct).toFixed(2)}%</span>
                 </div>
             `;
         } else {
             html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#8b949e;">
-                    <span>平均额外防御加成：</span>
+                    <span>平均防御加成：</span>
                     <span>无基于防御的动作</span>
                 </div>
             `;
@@ -1834,7 +1871,7 @@ function getColorForType(typeId) {
                     💡 实际倍率 = 1 + 总加成百分比/100。例如：50%加成 = 1.5倍<br>
                     💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)<br>
                     💡 属性加成按基数类型（攻击/生命/防御）分别统计<br>
-                    💡 "额外加成"仅指声骸、Buff等带来的额外提升，不包括面板已有加成
+                    💡 "总加成"包括面板已有加成（基础→当前面板）和声骸、Buff等带来的额外提升
                 </div>
             </div>
             </div>
