@@ -69,24 +69,48 @@
             // 查找要删除的类型名称
             const typeToDelete = DAMAGE_TYPES.find(t => t.id === typeId);
             const typeName = typeToDelete ? typeToDelete.name : '未知类型';
-        
-            if (confirm(`确定要删除自定义伤害类型"${typeName}"吗？\n\n注意：删除后，使用此类型的配置将恢复为默认类型。`)) {
+    
+            if (confirm(`确定要删除自定义伤害类型"${typeName}"吗？\n\n注意：删除后，所有使用此类型的配置（面板加成、动态Buff、动作序列）都将被安全删除。`)) {
+                // 1. 从DAMAGE_TYPES中删除
                 DAMAGE_TYPES = DAMAGE_TYPES.filter(t => t.id !== typeId);
-                updateAllDamageTypeSelects();
             
-                // 重新计算
+                // 2. 删除使用该类型的静态加成
+                const staticBonusItems = document.querySelectorAll('.static-bonus-item');
+                staticBonusItems.forEach(item => {
+                    const typeSelect = item.querySelector('.s-type');
+                    if (typeSelect && typeSelect.value === typeId) {
+                        item.remove();
+                    }
+                });
+            
+                // 3. 删除使用该类型的动态Buff
+                const buffConfigs = document.querySelectorAll('.buff-config');
+                buffConfigs.forEach(buff => {
+                    const typeSelect = buff.querySelector('.b-type');
+                    if (typeSelect && typeSelect.value === typeId) {
+                        buff.remove();
+                    }
+                });
+            
+                // 4. 删除使用该类型的动作序列
+                sequence = sequence.filter(action => action.type !== typeId);
+            
+                // 5. 更新界面
+                updateBuffPool();
+                updateAllDamageTypeSelects();
+                renderSequence();
+                renderBuffPagination();
+            
+                // 6. 重新计算
                 if (sequence.length > 0) {
                     calculate(false);
                 }
-            
-                // 首先完全关闭管理面板，确保移除所有相关元素
+        
+                // 7. 关闭管理面板
                 closeCustomTypesPanel();
-                
-                // 然后重新打开管理面板
-                setTimeout(showCustomTypes, 100);
-                
-                // 显示成功消息
-                alert('✅ 已删除自定义伤害类型');
+            
+                // 8. 显示成功消息
+                alert('✅ 已删除自定义伤害类型及其相关配置');
             }
         } else {
             alert('❌ 系统默认类型不能删除');
@@ -347,16 +371,20 @@
         // 更新静态加成选择器
         document.querySelectorAll('.s-type').forEach(select => {
             const currentValue = select.value;
+            // 如果当前值不在DAMAGE_TYPES中（可能是已删除的自定义类型），则使用默认值
+            const validCurrentValue = DAMAGE_TYPES.some(t => t.id === currentValue) ? currentValue : 'all';
             select.innerHTML = DAMAGE_TYPES.map(t => 
-                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+                `<option value="${t.id}" ${t.id === validCurrentValue ? 'selected' : ''}>${t.name}</option>`
             ).join('');
         });
         
         // 更新动态Buff选择器
         document.querySelectorAll('.b-type').forEach(select => {
             const currentValue = select.value;
+            // 如果当前值不在DAMAGE_TYPES中（可能是已删除的自定义类型），则使用默认值
+            const validCurrentValue = DAMAGE_TYPES.some(t => t.id === currentValue) ? currentValue : 'all';
             select.innerHTML = DAMAGE_TYPES.map(t => 
-                `<option value="${t.id}" ${t.id === currentValue ? 'selected' : ''}>${t.name}</option>`
+                `<option value="${t.id}" ${t.id === validCurrentValue ? 'selected' : ''}>${t.name}</option>`
             ).join('');
         });
         
@@ -366,8 +394,10 @@
             const currentValue = actTypeSelect.value;
             // 如果是首次加载（currentValue为空），默认选择'skill'类型
             const defaultValue = currentValue || 'skill';
+            // 确保默认值在DAMAGE_TYPES中
+            const validDefaultValue = DAMAGE_TYPES.some(t => t.id === defaultValue) ? defaultValue : 'skill';
             actTypeSelect.innerHTML = DAMAGE_TYPES.map(t => 
-                `<option value="${t.id}" ${t.id === defaultValue ? 'selected' : ''}>${t.name}</option>`
+                `<option value="${t.id}" ${t.id === validDefaultValue ? 'selected' : ''}>${t.name}</option>`
             ).join('');
         }
         
@@ -843,6 +873,14 @@ function addAction() {
         updateBuffPool();
         const container = document.getElementById('action_sequence');
         container.innerHTML = sequence.map((a, i) => {
+            // 检查动作类型是否在DAMAGE_TYPES中，如果不在（可能是已删除的自定义类型），则跳过渲染
+            // 但实际上，这些动作应该已经在removeCustomDamageType中被过滤掉了
+            const typeExists = DAMAGE_TYPES.some(t => t.id === a.type);
+            if (!typeExists) {
+                // 如果类型不存在，使用默认类型
+                a.type = 'skill';
+            }
+            
             // 生成伤害类型选项
             const typeOptions = DAMAGE_TYPES.map(t => 
                 `<option value="${t.id}" ${t.id === a.type ? 'selected' : ''}>${t.name}</option>`
@@ -3523,6 +3561,31 @@ function updateChart(typeDmg) {
             });
         }
         
+        // 过滤掉使用不存在的自定义伤害类型的配置
+        // 1. 过滤静态加成
+        if (data.static_bonus && Array.isArray(data.static_bonus)) {
+            data.static_bonus = data.static_bonus.filter(item => {
+                // 检查类型是否在DAMAGE_TYPES中
+                return DAMAGE_TYPES.some(t => t.id === item.type);
+            });
+        }
+        
+        // 2. 过滤动态Buff
+        if (data.buffs && Array.isArray(data.buffs)) {
+            data.buffs = data.buffs.filter(buff => {
+                // 检查类型是否在DAMAGE_TYPES中
+                return DAMAGE_TYPES.some(t => t.id === buff.type);
+            });
+        }
+        
+        // 3. 过滤动作序列
+        if (data.sequence && Array.isArray(data.sequence)) {
+            data.sequence = data.sequence.filter(action => {
+                // 检查类型是否在DAMAGE_TYPES中
+                return DAMAGE_TYPES.some(t => t.id === action.type);
+            });
+        }
+        
         // 恢复基础面板数据
         if (data.character) {
             document.getElementById('base_hp').value = data.character.base_hp || '';
@@ -3968,6 +4031,22 @@ function updateChart(typeDmg) {
                 // 立即更新所有选择器
                 updateAllDamageTypeSelects();
             }
+            
+            // 过滤掉使用不存在的自定义伤害类型的配置
+            // 1. 过滤静态加成
+            importData.static_bonus = importData.static_bonus.filter(item => {
+                return DAMAGE_TYPES.some(t => t.id === item.type);
+            });
+            
+            // 2. 过滤动态Buff
+            importData.buffs = importData.buffs.filter(buff => {
+                return DAMAGE_TYPES.some(t => t.id === buff.type);
+            });
+            
+            // 3. 过滤动作序列
+            importData.sequence = importData.sequence.filter(action => {
+                return DAMAGE_TYPES.some(t => t.id === action.type);
+            });
             
             // 1. 导入基础面板数据
             if (importData.hasData.character) {
