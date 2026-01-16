@@ -409,15 +409,63 @@
             }
         });
 
+        // 创建小型提示元素
+        function createAutoSaveToast() {
+            const toast = document.createElement('div');
+            toast.id = 'autoSaveToast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(139, 69, 19, 0.9);
+                color: white;
+                padding: 10px 16px;
+                border-radius: 8px;
+                font-size: 12px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                opacity: 0;
+                transform: translateY(20px);
+                transition: opacity 0.3s ease, transform 0.3s ease;
+                pointer-events: none;
+                max-width: 300px;
+                backdrop-filter: blur(5px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            `;
+            document.body.appendChild(toast);
+            return toast;
+        }
+
+        // 显示自动保存提示
+        function showAutoSaveToast(message) {
+            let toast = document.getElementById('autoSaveToast');
+            if (!toast) {
+                toast = createAutoSaveToast();
+            }
+            
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+            }, 3000);
+        }
+
         // 添加自动保存定时器（每5分钟自动保存一次）
         setInterval(() => {
             const lastSave = localStorage.getItem('mingchao_damage_calc_last_auto_save');
             const now = Date.now();
             // 如果超过5分钟没有保存，自动保存
             if (!lastSave || (now - parseInt(lastSave)) > 5 * 60 * 1000) {
-                saveConfig();
+                // 自动保存时不显示弹窗，只显示小型提示
+                saveConfig(false, 'json', false);
                 localStorage.setItem('mingchao_damage_calc_last_auto_save', now.toString());
                 console.log('🔄 配置已自动保存');
+                // 显示小型提示
+                showAutoSaveToast('✅ 配置已自动保存');
             }
         }, 60 * 1000); // 每分钟检查一次
 
@@ -2119,7 +2167,7 @@ options: {
     }
 
     // 统一的保存功能 - 支持自动保存到本地存储，并可选择导出文件
-    function saveConfig(exportToFile = false, format = 'json') {
+    function saveConfig(exportToFile = false, format = 'json', showToast = true) {
         try {
             updateBuffPool();
             const config = {
@@ -2159,14 +2207,24 @@ options: {
                 } else if (format === 'xlsx') {
                     exportToXLSX(config);
                 }
-                alert('✅ 配置已保存到本地存储并导出为文件！');
+                if (showToast) {
+                    showAutoSaveToast('✅ 配置已保存并导出为文件！');
+                } else {
+                    console.log('🔄 配置已保存并导出为文件');
+                }
             } else {
-                alert('✅ 配置已保存到本地存储！');
+                if (showToast) {
+                    showAutoSaveToast('✅ 配置已保存到本地存储！');
+                } else {
+                    console.log('🔄 配置已保存到本地存储');
+                }
             }
             return true;
         } catch (error) {
             console.error('保存失败:', error);
-            alert('❌ 保存失败: ' + error.message);
+            if (showToast) {
+                showAutoSaveToast('❌ 保存失败: ' + error.message);
+            }
             return false;
         }
     }
