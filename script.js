@@ -819,7 +819,7 @@ function addAction() {
     }
 
     // --- 计算逻辑 ---
-function runSim(extraSubs = []) {
+function runSim(extraSubs = [], removeSubs = []) {
     updateBuffPool();
 
     // 1. 获取基础面板数据
@@ -858,6 +858,7 @@ function runSim(extraSubs = []) {
         }
     });
 
+    // 处理要添加的词条
     extraSubs.forEach(s => {
         const d = SUBSTAT_DATA[s.key];
         if(!d) return;
@@ -868,6 +869,20 @@ function runSim(extraSubs = []) {
             else if(subBonus[d.type] !== undefined) subBonus[d.type] += v;
         } else {
             if(subFlatValues[d.type] !== undefined) subFlatValues[d.type] += s.val;
+        }
+    });
+
+    // 处理要移除的词条（减去它们的值）
+    removeSubs.forEach(s => {
+        const d = SUBSTAT_DATA[s.key];
+        if(!d) return;
+        
+        if (d.isPct) {
+            const v = s.val / 100;
+            if(subValues[d.type] !== undefined) subValues[d.type] -= v;
+            else if(subBonus[d.type] !== undefined) subBonus[d.type] -= v;
+        } else {
+            if(subFlatValues[d.type] !== undefined) subFlatValues[d.type] -= s.val;
         }
     });
 
@@ -979,6 +994,9 @@ function runSim(extraSubs = []) {
                 panelExistingPct = 0;
                 panelExistingFlat = currentTotalStat - baseStat;
             }
+        } else {
+            // 如果基础属性为0，则面板已有固定值就是当前总属性
+            panelExistingFlat = currentTotalStat;
         }
         
         // 总百分比 = 面板已有百分比 + 额外百分比
@@ -1239,20 +1257,22 @@ function getColorForType(typeId) {
         let echoASubs, echoBSubs;
         
         if (isEchoAEquipped) {
-            // 声骸A已装备：基础伤害包含声骸A的词条
+            // 声骸A已装备：基础伤害已经包含声骸A的词条（体现在面板中）
             echoASubs = getEchoSubs('echo_a');
             echoBSubs = getEchoSubs('echo_b');
-            resBase = runSim(echoASubs);
-            // 替换为声骸B后的伤害
-            resB = runSim(echoBSubs);
+            // 基础伤害：使用当前面板（包含声骸A的词条）
+            // 这里传递空数组，因为声骸A的词条已经在面板中
+            resBase = runSim([], []);
+            // 声骸B的伤害：移除声骸A的词条，添加声骸B的词条
+            resB = runSim(echoBSubs, echoASubs);
         } else {
             // 声骸A未装备：基础伤害不包含任何声骸词条
             echoASubs = getEchoSubs('echo_a');
             echoBSubs = getEchoSubs('echo_b');
-            resBase = runSim([]);
+            resBase = runSim([], []);
             // 分别计算声骸A和B的提升
-            const resA = runSim(echoASubs);
-            const resBWithA = runSim(echoBSubs);
+            const resA = runSim(echoASubs, []);
+            const resBWithA = runSim(echoBSubs, []);
             
             const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
             const gainB = (resBWithA.totalDmg / resBase.totalDmg - 1) * 100;
