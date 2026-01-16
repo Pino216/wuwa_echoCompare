@@ -42,11 +42,27 @@
             // 查找要删除的类型名称
             const typeToDelete = DAMAGE_TYPES.find(t => t.id === typeId);
             const typeName = typeToDelete ? typeToDelete.name : '未知类型';
-            
+        
             if (confirm(`确定要删除自定义伤害类型"${typeName}"吗？\n\n注意：删除后，使用此类型的配置将恢复为默认类型。`)) {
                 DAMAGE_TYPES = DAMAGE_TYPES.filter(t => t.id !== typeId);
                 updateAllDamageTypeSelects();
-                alert('✅ 已删除自定义伤害类型');
+            
+                // 重新计算
+                if (sequence.length > 0) {
+                    calculate(false);
+                }
+            
+                // 如果管理面板是打开的，刷新它
+                const panel = document.querySelector('div[style*="min-width: 400px"]');
+                if (panel) {
+                    // 关闭当前面板并重新打开
+                    const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
+                    if (overlay) document.body.removeChild(overlay);
+                    document.body.removeChild(panel);
+                    setTimeout(showCustomTypes, 100);
+                } else {
+                    alert('✅ 已删除自定义伤害类型');
+                }
             }
         } else {
             alert('❌ 系统默认类型不能删除');
@@ -55,17 +71,183 @@
 
     function showCustomTypes() {
         const customTypes = DAMAGE_TYPES.filter(t => t.id.startsWith('custom_'));
+    
+        // 创建管理面板
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            z-index: 10000;
+            min-width: 400px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid #8B4513;
+        `;
+    
+        let html = `
+            <h3 style="margin-top:0; color:#8B4513; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:10px;">
+                管理自定义伤害类型
+            </h3>
+        `;
+    
         if (customTypes.length === 0) {
-            alert('暂无自定义伤害类型');
-            return;
-        }
+            html += `
+                <div style="text-align:center; padding:20px; color:#8b949e;">
+                    暂无自定义伤害类型
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="margin-bottom:15px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:rgba(139, 69, 19, 0.1);">
+                                <th style="padding:8px; text-align:left; border-bottom:2px solid rgba(139, 69, 19, 0.3);">类型名称</th>
+                                <th style="padding:8px; text-align:center; border-bottom:2px solid rgba(139, 69, 19, 0.3); width:120px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
         
-        let message = '当前自定义伤害类型：\n\n';
-        customTypes.forEach(t => {
-            message += `• ${t.name} (ID: ${t.id})\n`;
-        });
-        message += '\n要删除某个类型，请复制其ID并在控制台中执行：removeCustomDamageType("ID")';
-        alert(message);
+            customTypes.forEach(t => {
+                html += `
+                    <tr style="border-bottom:1px solid rgba(139, 69, 19, 0.1);">
+                        <td style="padding:8px;">
+                            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:8px; background:${getColorForType(t.id)};"></span>
+                            ${t.name}
+                        </td>
+                        <td style="padding:8px; text-align:center;">
+                            <button onclick="editCustomType('${t.id}')" style="
+                                background:linear-gradient(135deg, #4a6bff, #6a8bff);
+                                color:white;
+                                border:none;
+                                padding:4px 10px;
+                                border-radius:6px;
+                                cursor:pointer;
+                                font-size:11px;
+                                margin-right:5px;
+                            ">编辑</button>
+                            <button onclick="removeCustomDamageType('${t.id}')" style="
+                                background:linear-gradient(135deg, #ff6b8b, #ff8ba3);
+                                color:white;
+                                border:none;
+                                padding:4px 10px;
+                                border-radius:6px;
+                                cursor:pointer;
+                                font-size:11px;
+                            ">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+    
+        html += `
+            <div style="margin-top:20px; display:flex; justify-content:space-between; gap:10px;">
+                <button onclick="this.closest('div').remove()" style="
+                    flex:1;
+                    background:linear-gradient(135deg, #8b949e, #6e7681);
+                    color:white;
+                    border:none;
+                    padding:10px;
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:bold;
+                ">关闭</button>
+                <button onclick="addCustomDamageTypeFromPanel()" style="
+                    flex:1;
+                    background:linear-gradient(135deg, #4caf50, #66bb6a);
+                    color:white;
+                    border:none;
+                    padding:10px;
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:bold;
+                ">+ 添加新类型</button>
+            </div>
+        `;
+    
+        panel.innerHTML = html;
+    
+        // 添加遮罩层
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+        `;
+        overlay.onclick = function() {
+            document.body.removeChild(overlay);
+            document.body.removeChild(panel);
+        };
+    
+        document.body.appendChild(overlay);
+        document.body.appendChild(panel);
+    }
+
+    function addCustomDamageTypeFromPanel() {
+        const customName = prompt('请输入自定义伤害类型名称：', '自定义类型');
+        if (customName && customName.trim()) {
+            const customId = 'custom_' + Date.now();
+            DAMAGE_TYPES.push({ id: customId, name: customName.trim() });
+            updateAllDamageTypeSelects();
+        
+            // 关闭当前面板并重新打开以刷新列表
+            const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
+            const panel = document.querySelector('div[style*="min-width: 400px"]');
+            if (overlay) document.body.removeChild(overlay);
+            if (panel) document.body.removeChild(panel);
+        
+            // 重新计算
+            if (sequence.length > 0) {
+                calculate(false);
+            }
+        
+            // 重新打开管理面板
+            setTimeout(showCustomTypes, 100);
+        }
+    }
+
+    function editCustomType(typeId) {
+        const type = DAMAGE_TYPES.find(t => t.id === typeId);
+        if (!type) return;
+    
+        const newName = prompt('请输入新的类型名称：', type.name);
+        if (newName && newName.trim() && newName.trim() !== type.name) {
+            type.name = newName.trim();
+            updateAllDamageTypeSelects();
+        
+            // 关闭当前面板并重新打开以刷新列表
+            const overlay = document.querySelector('div[style*="background: rgba(0,0,0,0.5)"]');
+            const panel = document.querySelector('div[style*="min-width: 400px"]');
+            if (overlay) document.body.removeChild(overlay);
+            if (panel) document.body.removeChild(panel);
+        
+            // 重新计算
+            if (sequence.length > 0) {
+                calculate(false);
+            }
+        
+            // 重新打开管理面板
+            setTimeout(showCustomTypes, 100);
+        }
     }
 
     function updateAllDamageTypeSelects() {

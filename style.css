@@ -292,6 +292,40 @@
             margin-bottom: 20px;
             position: relative;
         }
+
+        /* 管理面板中的按钮样式 */
+        .custom-type-btn {
+            background: linear-gradient(135deg, #4a6bff, #6a8bff);
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-right: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-type-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 107, 255, 0.3);
+        }
+
+        .custom-type-delete-btn {
+            background: linear-gradient(135deg, #ff6b8b, #ff8ba3);
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-type-delete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 139, 0.3);
+        }
         
         /* 导出下拉菜单样式 */
         .export-dropdown {
