@@ -984,7 +984,11 @@ function runSim(extraSubs = []) {
             totalDamageDeepenPct: (curDeepen - 1) * 100, // 总伤害加深百分比
             appliedBuffs: appliedBuffs,
             scalingType: a.scaling,
-            damageType: a.type
+            damageType: a.type,
+            // 新增：暴击相关信息
+            critRate: curCr * 100, // 暴击率百分比
+            critDamage: curCd * 100, // 暴击伤害百分比
+            critMultiplier: critExp // 暴击期望倍率
         });
     });
 
@@ -1553,7 +1557,7 @@ function getColorForType(typeId) {
                 详细加成分析（基于当前装备的声骸A）
             </h3>
             <div style="font-size:11px; color:#8b949e; margin-bottom:10px;">
-                显示每个动作的额外攻击力/生命/防御加成、伤害加成、伤害加深百分比
+                显示每个动作的实际倍率：攻击力/生命/防御加成、伤害加成倍率、伤害加深倍率
             </div>
         `;
     
@@ -1565,6 +1569,14 @@ function getColorForType(typeId) {
                 'hp': '生命值',
                 'def': '防御力'
             }[info.scalingType] || info.scalingType;
+            
+            // 计算实际倍率（百分比转换为小数倍率）
+            // 属性加成倍率 = 1 + 总属性加成百分比/100
+            const attrMultiplier = 1 + info.totalAttrBonusPct / 100;
+            // 伤害加成倍率 = 1 + 总伤害加成百分比/100
+            const damageBonusMultiplier = 1 + info.totalDamageBonusPct / 100;
+            // 伤害加深倍率 = 1 + 总伤害加深百分比/100
+            const damageDeepenMultiplier = 1 + info.totalDamageDeepenPct / 100;
         
             html += `
                 <div style="margin-bottom:15px; border:1px solid rgba(139, 69, 19, 0.2); border-radius:8px; padding:10px;">
@@ -1577,6 +1589,7 @@ function getColorForType(typeId) {
                                 <th style="padding:6px; text-align:left; border-bottom:1px solid rgba(139, 69, 19, 0.3);">加成类型</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">额外加成</th>
                                 <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">总加成</th>
+                                <th style="padding:6px; text-align:right; border-bottom:1px solid rgba(139, 69, 19, 0.3);">实际倍率</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1588,6 +1601,9 @@ function getColorForType(typeId) {
                                 <td style="padding:6px; text-align:right; color:#4a6bff;">
                                     ${info.totalAttrBonusPct.toFixed(2)}%
                                 </td>
+                                <td style="padding:6px; text-align:right; color:#4a6bff; font-weight:bold;">
+                                    ${attrMultiplier.toFixed(3)}倍
+                                </td>
                             </tr>
                             <tr>
                                 <td style="padding:6px;">伤害加成</td>
@@ -1597,6 +1613,9 @@ function getColorForType(typeId) {
                                 <td style="padding:6px; text-align:right; color:#ff9800;">
                                     ${info.totalDamageBonusPct.toFixed(2)}%
                                 </td>
+                                <td style="padding:6px; text-align:right; color:#ff9800; font-weight:bold;">
+                                    ${damageBonusMultiplier.toFixed(3)}倍
+                                </td>
                             </tr>
                             <tr>
                                 <td style="padding:6px;">伤害加深</td>
@@ -1605,6 +1624,9 @@ function getColorForType(typeId) {
                                 </td>
                                 <td style="padding:6px; text-align:right; color:#4caf50;">
                                     ${info.totalDamageDeepenPct.toFixed(2)}%
+                                </td>
+                                <td style="padding:6px; text-align:right; color:#4caf50; font-weight:bold;">
+                                    ${damageDeepenMultiplier.toFixed(3)}倍
                                 </td>
                             </tr>
                         </tbody>
@@ -1636,7 +1658,18 @@ function getColorForType(typeId) {
                     </div>
                 `;
             }
-        
+            
+            // 添加暴击信息
+            html += `
+                <div style="margin-top:8px; font-size:10px; color:#8b949e; background:rgba(139, 69, 19, 0.05); padding:6px; border-radius:4px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>暴击率：<strong style="color:#ff4081;">${info.critRate.toFixed(1)}%</strong></span>
+                        <span>暴击伤害：<strong style="color:#ff4081;">${info.critDamage.toFixed(1)}%</strong></span>
+                        <span>暴击期望倍率：<strong style="color:#ff4081;">${info.critMultiplier.toFixed(3)}倍</strong></span>
+                    </div>
+                </div>
+            `;
+            
             html += `</div>`;
         });
     
@@ -1644,21 +1677,47 @@ function getColorForType(typeId) {
         const totalAttrBonus = detailedInfo.reduce((sum, info) => sum + info.attrBonusPct, 0);
         const totalDamageBonus = detailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
         const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
+        
+        // 计算平均实际倍率
+        const avgAttrMultiplier = 1 + (totalAttrBonus / detailedInfo.length) / 100;
+        const avgDamageBonusMultiplier = 1 + (totalDamageBonus / detailedInfo.length) / 100;
+        const avgDamageDeepenMultiplier = 1 + (totalDamageDeepen / detailedInfo.length) / 100;
+        
+        // 计算平均暴击信息
+        const avgCritRate = detailedInfo.reduce((sum, info) => sum + info.critRate, 0) / detailedInfo.length;
+        const avgCritDamage = detailedInfo.reduce((sum, info) => sum + info.critDamage, 0) / detailedInfo.length;
+        const avgCritMultiplier = detailedInfo.reduce((sum, info) => sum + info.critMultiplier, 0) / detailedInfo.length;
     
         html += `
             <div style="margin-top:15px; border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
-                <div style="font-weight:bold; color:#8B4513; margin-bottom:5px;">总计额外加成（所有动作平均）</div>
-                <div style="display:flex; justify-content:space-between; font-size:12px;">
-                    <span>平均${scalingName}加成：</span>
-                    <span style="color:#4a6bff; font-weight:bold;">${(totalAttrBonus / detailedInfo.length).toFixed(2)}%</span>
+                <div style="font-weight:bold; color:#8B4513; margin-bottom:5px;">总计加成（所有动作平均）</div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span>平均属性加成：</span>
+                    <span style="color:#4a6bff; font-weight:bold;">${(totalAttrBonus / detailedInfo.length).toFixed(2)}% (${avgAttrMultiplier.toFixed(3)}倍)</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                     <span>平均伤害加成：</span>
-                    <span style="color:#ff9800; font-weight:bold;">${(totalDamageBonus / detailedInfo.length).toFixed(2)}%</span>
+                    <span style="color:#ff9800; font-weight:bold;">${(totalDamageBonus / detailedInfo.length).toFixed(2)}% (${avgDamageBonusMultiplier.toFixed(3)}倍)</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                     <span>平均伤害加深：</span>
-                    <span style="color:#4caf50; font-weight:bold;">${(totalDamageDeepen / detailedInfo.length).toFixed(2)}%</span>
+                    <span style="color:#4caf50; font-weight:bold;">${(totalDamageDeepen / detailedInfo.length).toFixed(2)}% (${avgDamageDeepenMultiplier.toFixed(3)}倍)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; padding-top:4px; border-top:1px dashed rgba(139, 69, 19, 0.2);">
+                    <span>平均暴击率：</span>
+                    <span style="color:#ff4081; font-weight:bold;">${avgCritRate.toFixed(1)}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span>平均暴击伤害：</span>
+                    <span style="color:#ff4081; font-weight:bold;">${avgCritDamage.toFixed(1)}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                    <span>平均暴击期望倍率：</span>
+                    <span style="color:#ff4081; font-weight:bold;">${avgCritMultiplier.toFixed(3)}倍</span>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(139, 69, 19, 0.2); font-size:11px; color:#8b949e;">
+                    💡 实际倍率 = 1 + 总加成百分比/100。例如：50%加成 = 1.5倍<br>
+                    💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)
                 </div>
             </div>
         `;
