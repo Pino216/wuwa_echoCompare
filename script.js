@@ -563,14 +563,7 @@
             });
         });
 
-        // 为声骸A装备复选框添加事件监听
-        const echoACheckbox = document.getElementById('echo_a_equipped');
-        if (echoACheckbox) {
-            echoACheckbox.addEventListener('change', function() {
-                // 使用防抖计算，函数内部会检查序列是否为空
-                debouncedCalculate();
-            });
-        }
+        // 声骸A现在总是已装备，不需要勾选框事件监听
 
         // 为所有现有的声骸数值选择器添加事件监听器
         document.querySelectorAll('.sub-val').forEach(select => {
@@ -1604,50 +1597,14 @@ function getColorForType(typeId) {
             return subs;
         };
 
-        // 修复：正确获取声骸A装备状态
-        const echoACheckbox = document.getElementById('echo_a_equipped');
-        const isEchoAEquipped = echoACheckbox ? echoACheckbox.checked : true;
-        
-        let resBase, resB;
-        let echoASubs, echoBSubs;
-        
-        if (isEchoAEquipped) {
-            // 声骸A已装备：基础伤害已经包含声骸A的词条（体现在面板中）
-            echoASubs = getEchoSubs('echo_a');
-            echoBSubs = getEchoSubs('echo_b');
-            // 基础伤害：使用当前面板（包含声骸A的词条）
-            // 这里传递空数组，因为声骸A的词条已经在面板中
-            resBase = runSim([], []);
-            // 声骸B的伤害：移除声骸A的词条，添加声骸B的词条
-            resB = runSim(echoBSubs, echoASubs);
-        } else {
-            // 声骸A未装备：基础伤害不包含任何声骸词条
-            echoASubs = getEchoSubs('echo_a');
-            echoBSubs = getEchoSubs('echo_b');
-            resBase = runSim([], []);
-            // 分别计算声骸A和B的提升
-            const resA = runSim(echoASubs, []);
-            const resBWithA = runSim(echoBSubs, []);
-            
-            const gainA = (resA.totalDmg / resBase.totalDmg - 1) * 100;
-            const gainB = (resBWithA.totalDmg / resBase.totalDmg - 1) * 100;
-            const diff = gainA - gainB;
-            
-            updateChart(resBase.typeDmg);
-            updateDamageComposition(resBase.typeDmg);
-            
-            // 显示详细的变化分析
-            document.getElementById('compare_res').innerHTML = generateDamageChangeAnalysis(
-                resBase, resA, resBWithA, 
-                echoASubs, echoBSubs,
-                gainA, gainB, diff,
-                false
-            );
-            
-            // 新增：显示详细加成信息（基于无任何声骸的情况）
-            displayDetailedBonusInfo(resBase.detailedInfo);
-            return;
-        }
+        // 声骸A总是已装备：基础伤害已经包含声骸A的词条（体现在面板中）
+        const echoASubs = getEchoSubs('echo_a');
+        const echoBSubs = getEchoSubs('echo_b');
+        // 基础伤害：使用当前面板（包含声骸A的词条）
+        // 这里传递空数组，因为声骸A的词条已经在面板中
+        const resBase = runSim([], []);
+        // 声骸B的伤害：移除声骸A的词条，添加声骸B的词条
+        const resB = runSim(echoBSubs, echoASubs);
 
         updateChart(resBase.typeDmg);
         updateDamageComposition(resBase.typeDmg);
@@ -1679,12 +1636,11 @@ function getColorForType(typeId) {
         let html = `
             <div style="margin-bottom:15px;">
                 <h3 style="margin-top:0; color:#8B4513; font-size:1.1em; border-bottom:2px solid rgba(139, 69, 19, 0.3); padding-bottom:5px;">
-                    ${isEchoAEquipped ? '声骸替换影响分析' : '声骸提升对比分析'}
+                    声骸替换影响分析
                 </h3>
         `;
         
-        if (isEchoAEquipped) {
-            html += `
+        html += `
                 <div style="margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <span>当前装备: <strong style="color:#8B4513;">声骸 A</strong></span>
@@ -1702,24 +1658,6 @@ function getColorForType(typeId) {
                     </div>
                 </div>
             `;
-        } else {
-            html += `
-                <div style="margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span>无任何声骸:</span>
-                        <span style="font-weight:bold;">${resBase.totalDmg.toFixed(0)}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span>装备声骸 A:</span>
-                        <span style="font-weight:bold;">${resA.totalDmg.toFixed(0)} <span class="diff-pos">(+${gainA.toFixed(2)}%)</span></span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>装备声骸 B:</span>
-                        <span style="font-weight:bold;">${resB.totalDmg.toFixed(0)} <span class="diff-pos">(+${gainB.toFixed(2)}%)</span></span>
-                    </div>
-                </div>
-            `;
-        }
         
         // 声骸词条对比表格（区分百分比和固定值）
         html += `
