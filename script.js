@@ -430,6 +430,42 @@
         return false;
     }
 
+    // 暴击率溢出转换功能
+    function applyCrOverflow(cr, cd) {
+        const enable = document.getElementById('enable_cr_overflow')?.checked;
+        if (!enable) {
+            return { cr: cr, cd: cd };
+        }
+        
+        const ratio = parseFloat(document.getElementById('cr_to_cd_ratio')?.value) || 2;
+        const maxGain = parseFloat(document.getElementById('max_cd_gain')?.value) || 100;
+        
+        let overflowCr = Math.max(0, cr - 100);
+        if (overflowCr <= 0) {
+            return { cr: Math.min(cr, 100), cd: cd };
+        }
+        
+        // 计算可获得的暴伤增益
+        let cdGain = overflowCr * ratio;
+        cdGain = Math.min(cdGain, maxGain);
+        
+        // 暴击率不能超过100%
+        const finalCr = Math.min(cr, 100);
+        const finalCd = cd + cdGain;
+        
+        return { cr: finalCr, cd: finalCd };
+    }
+
+    // 更新暴击率溢出设置面板的显示
+    function updateCrOverflowPanel() {
+        const enableCheckbox = document.getElementById('enable_cr_overflow');
+        const settingsPanel = document.getElementById('cr_overflow_settings');
+        
+        if (enableCheckbox && settingsPanel) {
+            settingsPanel.style.display = enableCheckbox.checked ? 'block' : 'none';
+        }
+    }
+
     // 添加页面加载时的视觉增强
     window.onload = () => {
         // 首先从本地存储加载自定义伤害类型
@@ -449,6 +485,38 @@
         
         // 初始化伤害类型选择器
         updateAllDamageTypeSelects();
+        
+        // 初始化暴击率溢出转换面板
+        const enableCrOverflow = document.getElementById('enable_cr_overflow');
+        if (enableCrOverflow) {
+            enableCrOverflow.addEventListener('change', function() {
+                updateCrOverflowPanel();
+                // 触发重新计算
+                if (sequence.length > 0) {
+                    debouncedCalculate();
+                }
+            });
+            // 设置初始状态
+            updateCrOverflowPanel();
+        }
+        
+        // 为暴击率溢出设置添加事件监听
+        const ratioInput = document.getElementById('cr_to_cd_ratio');
+        const maxGainInput = document.getElementById('max_cd_gain');
+        if (ratioInput) {
+            ratioInput.addEventListener('input', function() {
+                if (sequence.length > 0 && document.getElementById('enable_cr_overflow')?.checked) {
+                    debouncedCalculate();
+                }
+            });
+        }
+        if (maxGainInput) {
+            maxGainInput.addEventListener('input', function() {
+                if (sequence.length > 0 && document.getElementById('enable_cr_overflow')?.checked) {
+                    debouncedCalculate();
+                }
+            });
+        }
         
         // 尝试自动加载上次保存的配置（抑制计算）
         const hasLoaded = autoLoadLastConfig();
@@ -1052,8 +1120,13 @@ function runSim(extraSubs = [], removeSubs = []) {
     const baseDef = parseFloat(document.getElementById('base_def').value) || 0;
     const totalDefNow = parseFloat(document.getElementById('total_def_now')?.value) || 0;
 
-    const panelCr = parseFloat(document.getElementById('base_cr').value) / 100 || 0;
-    const panelCd = parseFloat(document.getElementById('base_cd').value) / 100 || 0;
+    let panelCr = parseFloat(document.getElementById('base_cr').value) / 100 || 0;
+    let panelCd = parseFloat(document.getElementById('base_cd').value) / 100 || 0;
+        
+    // 应用暴击率溢出转换
+    const crOverflowResult = applyCrOverflow(panelCr * 100, panelCd * 100);
+    panelCr = crOverflowResult.cr / 100;
+    panelCd = crOverflowResult.cd / 100;
 
     // 2. 固定加成 (来自静态列表)
     let staticBonusMap = { all:0 };
@@ -1151,6 +1224,12 @@ function runSim(extraSubs = [], removeSubs = []) {
         let curAttrPct = subValues[scalingAttrKey];
         let curCr = panelCr + subValues.cr;
         let curCd = panelCd + subValues.cd;
+        
+        // 应用暴击率溢出转换（针对每个动作的最终暴击率）
+        // 注意：这里需要将百分比转换为实际值
+        const actionCrOverflow = applyCrOverflow(curCr * 100, curCd * 100);
+        curCr = actionCrOverflow.cr / 100;
+        curCd = actionCrOverflow.cd / 100;
         let curBonus = 1 + staticBonusMap.all + staticBonusMap[a.type] + (subBonus[a.type] || 0);
         let curDeepen = 1;
 
@@ -1197,6 +1276,11 @@ function runSim(extraSubs = [], removeSubs = []) {
                 }
             }
         });
+        
+        // 应用暴击率溢出转换（在所有加成之后）
+        const finalCrOverflow = applyCrOverflow(curCr * 100, curCd * 100);
+        curCr = finalCrOverflow.cr / 100;
+        curCd = finalCrOverflow.cd / 100;
 
         // 最终属性计算：
         // 面板总属性已经包含了基础加成，我们只需要加上额外加成
@@ -3686,6 +3770,20 @@ function updateChart(typeDmg) {
             }));
         }
         
+        // 恢复暴击率溢出转换设置
+        if (data.cr_overflow) {
+            const enableCheckbox = document.getElementById('enable_cr_overflow');
+            const ratioInput = document.getElementById('cr_to_cd_ratio');
+            const maxGainInput = document.getElementById('max_cd_gain');
+            
+            if (enableCheckbox) enableCheckbox.checked = data.cr_overflow.enabled || false;
+            if (ratioInput) ratioInput.value = data.cr_overflow.ratio || 2;
+            if (maxGainInput) maxGainInput.value = data.cr_overflow.max_gain || 100;
+            
+            // 更新面板显示
+            updateCrOverflowPanel();
+        }
+        
         // 恢复声骸配置
         if (data.echoes) {
             if (data.echoes.echo_a) {
@@ -4211,7 +4309,12 @@ function updateChart(typeDmg) {
                 damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
                     id: t.id,
                     name: t.name
-                }))
+                })),
+                cr_overflow: {
+                    enabled: document.getElementById('enable_cr_overflow')?.checked || false,
+                    ratio: document.getElementById('cr_to_cd_ratio')?.value || 2,
+                    max_gain: document.getElementById('max_cd_gain')?.value || 100
+                }
             };
             
             // 总是保存到本地存储（自动保存）

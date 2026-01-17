@@ -428,6 +428,17 @@
             overflow-y: auto;
         }
 
+        /* 暴击率溢出转换样式 */
+        #cr_overflow_settings {
+            transition: all 0.3s ease;
+        }
+        
+        #cr_overflow_settings input[type="number"] {
+            width: 50px;
+            font-size: 11px;
+            padding: 4px 6px;
+        }
+        
         /* 声骸样式 */
         .echo-header {
             display: flex;
