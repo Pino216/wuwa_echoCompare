@@ -3081,7 +3081,7 @@ function updateChart(typeDmg) {
             
             // 4. 动作序列工作表
             const sequenceData = [
-                ["动作名称", "倍率(%)", "伤害类型", "基数", "激活Buff"]
+                ["动作名称", "倍率(%)", "伤害类型", "基数", "启用状态", "激活Buff"]
             ];
             config.sequence.forEach(action => {
                 const typeName = DAMAGE_TYPES.find(t => t.id === action.type)?.name || action.type;
@@ -3094,6 +3094,7 @@ function updateChart(typeDmg) {
                     (action.mult * 100).toFixed(1), 
                     typeName, 
                     action.scaling || "atk",
+                    action.enabled !== false ? "启用" : "禁用",
                     buffNames
                 ]);
             });
@@ -3585,7 +3586,10 @@ function updateChart(typeDmg) {
                 ["导出工具", config.meta.tool_name],
                 ["版本", config.meta.version],
                 ["导出时间", config.meta.export_time],
-                ["数据版本", "5"],
+                ["数据版本", "6"],
+                ["暴击率溢出转换", config.cr_overflow?.enabled ? "启用" : "禁用"],
+                ["转换比例", config.cr_overflow?.ratio || 2],
+                ["最高暴伤提升", config.cr_overflow?.max_gain || 100],
                 ["备注", "鸣潮伤害分析工具导出数据（包含详细计算过程和声骸对比详细计算）"]
             ];
             const ws11 = XLSX.utils.aoa_to_sheet(metaData);
@@ -3793,6 +3797,11 @@ function updateChart(typeDmg) {
             
             // 更新面板显示
             updateCrOverflowPanel();
+        } else {
+            // 如果没有保存的暴击转换设置，使用默认值
+            const enableCheckbox = document.getElementById('enable_cr_overflow');
+            if (enableCheckbox) enableCheckbox.checked = false;
+            updateCrOverflowPanel();
         }
         
         // 恢复声骸配置
@@ -3935,7 +3944,8 @@ function updateChart(typeDmg) {
                         const multValue = row[1];
                         const typeName = row[2];
                         const scalingType = row[3];
-                        const buffNames = row[4];
+                        const enabledStatus = row[4];
+                        const buffNames = row[5];
                         
                         // 查找对应的伤害类型ID
                         const damageType = DAMAGE_TYPES.find(t => t.name === typeName);
@@ -3946,7 +3956,8 @@ function updateChart(typeDmg) {
                                 type: damageType.id,
                                 scaling: scalingType || 'atk',
                                 activeBuffs: [],
-                                enabled: true // Excel导入默认启用
+                                // 根据启用状态设置，默认为启用
+                                enabled: enabledStatus !== "禁用"
                             };
                             
                             // 处理激活的Buff（需要与导入的Buff匹配）
@@ -4025,6 +4036,30 @@ function updateChart(typeDmg) {
                                 name: typeName
                             });
                             importData.hasData.damage_types = true;
+                        }
+                    }
+                }
+            }
+            
+            // 7. 读取暴击率溢出转换设置（从元数据工作表）
+            const metaSheet = workbook.Sheets["元数据"];
+            if (metaSheet) {
+                const metaData = XLSX.utils.sheet_to_json(metaSheet, { header: 1 });
+                for (let i = 0; i < metaData.length; i++) {
+                    const row = metaData[i];
+                    if (row && row.length >= 2) {
+                        const key = row[0];
+                        const value = row[1];
+                        
+                        if (key === "暴击率溢出转换") {
+                            importData.cr_overflow = importData.cr_overflow || {};
+                            importData.cr_overflow.enabled = value === "启用";
+                        } else if (key === "转换比例") {
+                            importData.cr_overflow = importData.cr_overflow || {};
+                            importData.cr_overflow.ratio = parseFloat(value) || 2;
+                        } else if (key === "最高暴伤提升") {
+                            importData.cr_overflow = importData.cr_overflow || {};
+                            importData.cr_overflow.max_gain = parseFloat(value) || 100;
                         }
                     }
                 }
@@ -4263,6 +4298,20 @@ function updateChart(typeDmg) {
                 if (importData.echoes.echo_b) {
                     setEchoConfig('echo_b', importData.echoes.echo_b);
                 }
+            }
+            
+            // 6. 导入暴击率溢出转换设置
+            if (importData.cr_overflow) {
+                const enableCheckbox = document.getElementById('enable_cr_overflow');
+                const ratioInput = document.getElementById('cr_to_cd_ratio');
+                const maxGainInput = document.getElementById('max_cd_gain');
+                
+                if (enableCheckbox) enableCheckbox.checked = importData.cr_overflow.enabled || false;
+                if (ratioInput) ratioInput.value = importData.cr_overflow.ratio || 2;
+                if (maxGainInput) maxGainInput.value = importData.cr_overflow.max_gain || 100;
+                
+                // 更新面板显示
+                updateCrOverflowPanel();
             }
             
             // 更新界面
