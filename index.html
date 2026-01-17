@@ -88,12 +88,29 @@
             </div>
 
             <h3>动态 Buff 轨道</h3>
+            <div class="buff-group-toolbar">
+                <div class="group-selector">
+                    <select id="buff_group_select" onchange="changeCurrentGroup(this.value)" style="min-width:120px; padding:4px 8px; border-radius:6px; border:1px solid rgba(74,107,255,0.3); background:white;">
+                        <option value="default">默认组</option>
+                    </select>
+                    <button class="btn btn-small" onclick="createNewGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">+新建组</button>
+                    <button class="btn btn-small" onclick="renameCurrentGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">✏️重命名</button>
+                    <button class="btn btn-small" onclick="deleteCurrentGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">🗑️删除组</button>
+                </div>
+            </div>
             <div id="buff_pool"></div>
             <button class="btn add-new-buff-btn" onclick="addNewBuff()">+ 新增 Buff (每页最多显示8个)</button>
         </div>
 
         <div class="panel">
             <h2>2. 动作序列</h2>
+            <div class="buff-filter" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: #8B4513;">BUFF筛选:</span>
+                <select id="buff_group_filter" onchange="filterBuffsByGroup(this.value)" style="padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(74,107,255,0.3); background: white; font-size: 12px;">
+                    <option value="">显示所有组</option>
+                </select>
+                <button onclick="filterBuffsByGroup('')" style="padding: 4px 8px; font-size: 11px; background: rgba(74,107,255,0.1); border: 1px solid rgba(74,107,255,0.3); border-radius: 4px;">显示全部</button>
+            </div>
             <div id="action_sequence" style="max-height: 450px; overflow-y: auto;"></div>
             <div class="add-action-container">
                 <h3 class="add-action-title">添加新动作</h3>
@@ -167,6 +184,19 @@
         </div>
     </div>
 </div>
-<script src="script.js"></script>
+<!-- 模块化重构 -->
+<script src="js/constants.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/damageTypes.js"></script>
+<script src="js/buffManager.js"></script>
+<script src="js/sequenceManager.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/staticBonus.js"></script>
+<script src="js/echoManager.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/exportImport.js"></script>
+<script src="js/ui.js"></script>
+<!-- 其他模块将在后续添加 -->
+
 </body>
 </html>
