@@ -134,6 +134,16 @@
             box-shadow: 0 6px 20px rgba(74, 107, 255, 0.15);
             border-color: var(--primary);
         }
+        
+        .action-card.disabled {
+            opacity: 0.6;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .action-card.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
 
         .chip {
             background: rgba(139, 69, 19, 0.1);

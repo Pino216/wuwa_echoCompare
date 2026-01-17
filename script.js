@@ -462,7 +462,8 @@
                     mult: 2.5, 
                     type: "skill", 
                     scaling: "atk",
-                    activeBuffs: [] 
+                    activeBuffs: [],
+                    enabled: true 
                 }];
                 renderSequence();
             }
@@ -861,7 +862,8 @@ function addAction() {
         mult,
         type,
         scaling, // 存入此字段，runSim 才能读取
-        activeBuffs: []
+        activeBuffs: [],
+        enabled: true // 默认启用
     });
 
     renderSequence();
@@ -891,9 +893,18 @@ function addAction() {
             // 用于确认消息的动作名称（需要转义JavaScript字符串中的特殊字符）
             const jsEscapedName = a.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
             
+            // 添加启用复选框
+            const enabledChecked = a.enabled !== false ? 'checked' : '';
+            
             return `
-            <div class="action-card" data-index="${i}">
+            <div class="action-card" data-index="${i}" style="${a.enabled === false ? 'opacity:0.6; background:rgba(0,0,0,0.05);' : ''}">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" class="action-enabled" ${enabledChecked} 
+                               onchange="toggleActionEnabled(${i}, this.checked)" 
+                               style="width:16px; height:16px; cursor:pointer;">
+                        <span style="font-size:11px; color:#8B4513; white-space:nowrap;">启用</span>
+                    </div>
                     <input type="text" class="action-name" value="${escapedName}" style="width: 100px; flex: 1;" 
                            onchange="updateActionName(${i}, this.value)">
                     <input type="number" class="action-mult" value="${(a.mult*100).toFixed(1)}" style="width: 60px;" 
@@ -956,6 +967,15 @@ function addAction() {
             renderSequence();
             // 使用防抖计算，函数内部会检查序列是否为空
             debouncedCalculate();
+        }
+    }
+
+    function toggleActionEnabled(index, enabled) {
+        if (index >= 0 && index < sequence.length) {
+            sequence[index].enabled = enabled;
+            renderSequence();
+            // 立即重新计算
+            immediateCalculate();
         }
     }
 
@@ -1106,6 +1126,10 @@ function runSim(extraSubs = [], removeSubs = []) {
 
     // 4. 遍历动作序列计算
     sequence.forEach((a, index) => {
+        // 跳过未启用的动作
+        if (a.enabled === false) {
+            return;
+        }
         // 根据动作设定的基数(scaling)初始化基础值
         let baseStat = baseAtk;
         let currentTotalStat = totalAtkNow;
@@ -1444,9 +1468,13 @@ function getColorForType(typeId) {
             return false;
         }
         
-        // 验证动作倍率
+        // 验证动作倍率（只验证启用的动作）
         for (let i = 0; i < sequence.length; i++) {
             const action = sequence[i];
+            // 跳过未启用的动作
+            if (action.enabled === false) {
+                continue;
+            }
             if (isNaN(action.mult) || action.mult <= 0) {
                 if (showAlert) {
                     alert(`❌ 动作"${action.name}"的倍率必须为正数`);
@@ -1867,8 +1895,13 @@ function getColorForType(typeId) {
             }
         });
         
-        // 填充分组数据
+        // 填充分组数据（只处理启用的动作）
         detailedInfo.forEach(info => {
+            // 获取对应的动作，检查是否启用
+            const action = sequence[info.actionIndex];
+            if (action && action.enabled === false) {
+                return; // 跳过未启用的动作
+            }
             const group = damageTypeGroups[info.damageType];
             if (group) {
                 group.actions.push(info.actionName);
@@ -2038,13 +2071,19 @@ function getColorForType(typeId) {
         let totalDefBonus = 0;
         let atkCount = 0, hpCount = 0, defCount = 0;
         
-        const totalDamageBonus = detailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
-        const totalDamageDeepen = detailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
+        // 只统计启用的动作
+        const enabledDetailedInfo = detailedInfo.filter((info, idx) => {
+            const action = sequence[info.actionIndex];
+            return !(action && action.enabled === false);
+        });
+        
+        const totalDamageBonus = enabledDetailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
+        const totalDamageDeepen = enabledDetailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
     
         // 分别统计不同基数的属性加成
         // 注意：info.attrBonusPct 只包含声骸和Buff带来的额外加成
         // 我们需要加上面板已有加成
-        detailedInfo.forEach(info => {
+        enabledDetailedInfo.forEach(info => {
             if (info.scalingType === 'atk') {
                 // 总加成 = 面板已有加成 + 额外加成
                 totalAtkBonus += panelAtkPct + info.attrBonusPct;
@@ -2065,10 +2104,10 @@ function getColorForType(typeId) {
         const avgDamageBonusMultiplier = 1 + (totalDamageBonus / detailedInfo.length) / 100;
         const avgDamageDeepenMultiplier = 1 + (totalDamageDeepen / detailedInfo.length) / 100;
     
-        // 计算平均暴击信息
-        const avgCritRate = detailedInfo.reduce((sum, info) => sum + info.critRate, 0) / detailedInfo.length;
-        const avgCritDamage = detailedInfo.reduce((sum, info) => sum + info.critDamage, 0) / detailedInfo.length;
-        const avgCritMultiplier = detailedInfo.reduce((sum, info) => sum + info.critMultiplier, 0) / detailedInfo.length;
+        // 计算平均暴击信息（只统计启用的动作）
+        const avgCritRate = enabledDetailedInfo.reduce((sum, info) => sum + info.critRate, 0) / enabledDetailedInfo.length;
+        const avgCritDamage = enabledDetailedInfo.reduce((sum, info) => sum + info.critDamage, 0) / enabledDetailedInfo.length;
+        const avgCritMultiplier = enabledDetailedInfo.reduce((sum, info) => sum + info.critMultiplier, 0) / enabledDetailedInfo.length;
 
         html += `
             <div style="margin-top:15px; border-top:2px solid rgba(139, 69, 19, 0.3); padding-top:10px;">
@@ -3641,7 +3680,10 @@ function updateChart(typeDmg) {
         
         // 恢复动作序列
         if (data.sequence && Array.isArray(data.sequence)) {
-            sequence = data.sequence;
+            sequence = data.sequence.map(action => ({
+                ...action,
+                enabled: action.enabled !== false // 如果enabled字段不存在，默认为true
+            }));
         }
         
         // 恢复声骸配置
@@ -3794,7 +3836,8 @@ function updateChart(typeDmg) {
                                 mult: parseFloat(multValue) / 100 || 0,
                                 type: damageType.id,
                                 scaling: scalingType || 'atk',
-                                activeBuffs: []
+                                activeBuffs: [],
+                                enabled: true // Excel导入默认启用
                             };
                             
                             // 处理激活的Buff（需要与导入的Buff匹配）
@@ -4157,7 +4200,10 @@ function updateChart(typeDmg) {
                 },
                 static_bonus: getStaticBonusConfig(),
                 buffs: buffPool,
-                sequence: sequence,
+                sequence: sequence.map(action => ({
+                    ...action,
+                    enabled: action.enabled !== false // 确保enabled字段存在，默认true
+                })),
                 echoes: {
                     echo_a: getEchoConfig('echo_a'),
                     echo_b: getEchoConfig('echo_b')
