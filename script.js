@@ -2161,8 +2161,10 @@ function getColorForType(typeId) {
             return !(action && action.enabled === false);
         });
         
-        const totalDamageBonus = enabledDetailedInfo.reduce((sum, info) => sum + info.damageBonusPct, 0);
-        const totalDamageDeepen = enabledDetailedInfo.reduce((sum, info) => sum + info.damageDeepenPct, 0);
+        // 注意：info.damageBonusPct 和 info.damageDeepenPct 只包含额外加成
+        // 但用户可能更关心总加成效果，所以使用 totalDamageBonusPct 和 totalDamageDeepenPct
+        const totalDamageBonus = enabledDetailedInfo.reduce((sum, info) => sum + info.totalDamageBonusPct, 0);
+        const totalDamageDeepen = enabledDetailedInfo.reduce((sum, info) => sum + info.totalDamageDeepenPct, 0);
     
         // 分别统计不同基数的属性加成
         // 注意：info.attrBonusPct 只包含声骸和Buff带来的额外加成
@@ -2185,8 +2187,16 @@ function getColorForType(typeId) {
         const avgAtkMultiplier = atkCount > 0 ? 1 + (totalAtkBonus / atkCount) / 100 : 1;
         const avgHpMultiplier = hpCount > 0 ? 1 + (totalHpBonus / hpCount) / 100 : 1;
         const avgDefMultiplier = defCount > 0 ? 1 + (totalDefBonus / defCount) / 100 : 1;
-        const avgDamageBonusMultiplier = 1 + (totalDamageBonus / detailedInfo.length) / 100;
-        const avgDamageDeepenMultiplier = 1 + (totalDamageDeepen / detailedInfo.length) / 100;
+        
+        // 注意：totalDamageBonus 和 totalDamageDeepen 只包含额外加成
+        // 伤害加成和伤害加深没有"面板已有"的概念，所以直接计算平均值
+        const avgDamageBonusPct = enabledDetailedInfo.length > 0 ? 
+            (totalDamageBonus / enabledDetailedInfo.length) : 0;
+        const avgDamageDeepenPct = enabledDetailedInfo.length > 0 ? 
+            (totalDamageDeepen / enabledDetailedInfo.length) : 0;
+            
+        const avgDamageBonusMultiplier = 1 + avgDamageBonusPct / 100;
+        const avgDamageDeepenMultiplier = 1 + avgDamageDeepenPct / 100;
     
         // 计算平均暴击信息（只统计启用的动作）
         const avgCritRate = enabledDetailedInfo.reduce((sum, info) => sum + info.critRate, 0) / enabledDetailedInfo.length;
@@ -2271,12 +2281,12 @@ function getColorForType(typeId) {
         
         html += `
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均伤害加成：</span>
-                    <span style="color:#ff9800; font-weight:bold;">${(totalDamageBonus / detailedInfo.length).toFixed(2)}% (${avgDamageBonusMultiplier.toFixed(3)}倍)</span>
+                    <span>平均伤害加成（总）：</span>
+                    <span style="color:#ff9800; font-weight:bold;">${avgDamageBonusPct.toFixed(2)}% (${avgDamageBonusMultiplier.toFixed(3)}倍)</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                    <span>平均伤害加深：</span>
-                    <span style="color:#4caf50; font-weight:bold;">${(totalDamageDeepen / detailedInfo.length).toFixed(2)}% (${avgDamageDeepenMultiplier.toFixed(3)}倍)</span>
+                    <span>平均伤害加深（总）：</span>
+                    <span style="color:#4caf50; font-weight:bold;">${avgDamageDeepenPct.toFixed(2)}% (${avgDamageDeepenMultiplier.toFixed(3)}倍)</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; padding-top:4px; border-top:1px dashed rgba(139, 69, 19, 0.2);">
                     <span>平均暴击率：</span>
@@ -2294,7 +2304,8 @@ function getColorForType(typeId) {
                     💡 实际倍率 = 1 + 总加成百分比/100。例如：50%加成 = 1.5倍<br>
                     💡 暴击期望倍率 = 1 + 暴击率 × (暴击伤害 - 1)<br>
                     💡 属性加成按基数类型（攻击/生命/防御）分别统计<br>
-                    💡 "总加成"包括面板已有加成（基础→当前面板）和声骸、Buff等带来的额外提升
+                    💡 属性"总加成"包括面板已有加成（基础→当前面板）和声骸、Buff等带来的额外提升<br>
+                    💡 伤害加成和伤害加深统计总加成（包括静态加成和动态Buff）
                 </div>
             </div>
             </div>
