@@ -90,28 +90,29 @@
             <h3>动态 Buff 轨道</h3>
             <div class="buff-group-toolbar">
                 <div class="group-selector">
-                    <select id="buff_group_select" onchange="changeCurrentGroup(this.value)" style="min-width:120px; padding:4px 8px; border-radius:6px; border:1px solid rgba(74,107,255,0.3); background:white;">
+                    <select id="buff_group_select" onchange="changeCurrentGroup(this.value)">
                         <option value="default">默认组</option>
                     </select>
-                    <button class="btn btn-small" onclick="createNewGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">+新建组</button>
-                    <button class="btn btn-small" onclick="renameCurrentGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">✏️重命名</button>
-                    <button class="btn btn-small" onclick="deleteCurrentGroup()" style="padding:4px 8px; font-size:12px; background:rgba(74,107,255,0.1); border:1px solid rgba(74,107,255,0.3);">🗑️删除组</button>
+                    <span id="current_group_color" class="group-color-indicator"></span>
+                    <button class="btn btn-small" onclick="createNewGroup()">+新建组</button>
+                    <button class="btn btn-small" onclick="renameCurrentGroup()">✏️重命名</button>
+                    <button class="btn btn-small" onclick="deleteCurrentGroup()">🗑️删除组</button>
                 </div>
             </div>
             <div id="buff_pool"></div>
-            <button class="btn add-new-buff-btn" onclick="addNewBuff()">+ 新增 Buff (每页最多显示8个)</button>
+            <button class="btn add-new-buff-btn" onclick="addNewBuff()">+ 新增 Buff</button>
         </div>
 
         <div class="panel">
             <h2>2. 动作序列</h2>
-            <div class="buff-filter" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 12px; color: #8B4513;">BUFF筛选:</span>
-                <select id="buff_group_filter" onchange="filterBuffsByGroup(this.value)" style="padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(74,107,255,0.3); background: white; font-size: 12px;">
+            <div class="buff-filter">
+                <span>BUFF筛选:</span>
+                <select id="buff_group_filter" onchange="filterBuffsByGroup(this.value)">
                     <option value="">显示所有组</option>
                 </select>
-                <button onclick="filterBuffsByGroup('')" style="padding: 4px 8px; font-size: 11px; background: rgba(74,107,255,0.1); border: 1px solid rgba(74,107,255,0.3); border-radius: 4px;">显示全部</button>
+                <button onclick="filterBuffsByGroup('')">显示全部</button>
             </div>
-            <div id="action_sequence" style="max-height: 450px; overflow-y: auto;"></div>
+            <div id="action_sequence"></div>
             <div class="add-action-container">
                 <h3 class="add-action-title">添加新动作</h3>
                 <div class="input-row add-action-inputs">

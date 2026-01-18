@@ -42,8 +42,25 @@ function updateGroupSelect() {
         select.value = currentGroupId;
     }
     
+    // 更新组颜色指示器
+    updateGroupColorIndicator();
+    
     // 同时更新BUFF筛选下拉菜单
     updateBuffFilterSelect();
+}
+
+// 更新组颜色指示器
+function updateGroupColorIndicator() {
+    const indicator = document.getElementById('current_group_color');
+    if (!indicator) return;
+    
+    const group = buffGroups.find(g => g.id === currentGroupId);
+    if (group) {
+        indicator.style.backgroundColor = group.color;
+        indicator.style.display = 'inline-block';
+    } else {
+        indicator.style.display = 'none';
+    }
 }
 
 // 更新所有BUFF的分组选择器
@@ -199,15 +216,21 @@ function toggleGroupCollapse(groupId) {
     if (!groupContainer) return;
     
     const isCollapsed = groupContainer.classList.contains('collapsed');
-    const content = groupContainer.querySelector('.buff-group-content');
+    const toggleIcon = groupContainer.querySelector('.buff-group-toggle-icon');
     
     if (isCollapsed) {
         groupContainer.classList.remove('collapsed');
-        if (content) content.style.display = 'block';
+        if (toggleIcon) {
+            toggleIcon.innerHTML = '▼';
+            toggleIcon.style.transform = '';
+        }
         groupCollapsedState[groupId] = false;
     } else {
         groupContainer.classList.add('collapsed');
-        if (content) content.style.display = 'none';
+        if (toggleIcon) {
+            toggleIcon.innerHTML = '▶';
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
         groupCollapsedState[groupId] = true;
     }
 }
@@ -312,7 +335,7 @@ function addNewBuff() {
     const currentGroupColor = getGroupColor(currentGroupId);
     const backgroundColor = hexToRgba(currentGroupColor, 0.1);
     const html = `
-        <div class="buff-config" data-id="${fixedId}" data-group="${currentGroupId}" style="border-left:4px solid ${currentGroupColor}; background:${backgroundColor}; padding:12px; margin-bottom:10px; border-radius:8px;">
+        <div class="buff-config" data-id="${fixedId}" data-group="${currentGroupId}" style="border-left:4px solid ${currentGroupColor}; background:${backgroundColor}">
             <div class="input-row">
                 <input type="text" class="b-name" value="新Buff" style="width:80px" oninput="syncBuffNames('${fixedId}', this.value)">
                 <select class="b-cat" onchange="debouncedCalculate()">
@@ -326,12 +349,12 @@ function addNewBuff() {
                 </select>
             </div>
             <div class="input-row">
-                <select class="b-group" onchange="changeBuffGroup('${fixedId}', this.value)" style="width:100px; font-size:11px;">
+                <select class="b-group" onchange="changeBuffGroup('${fixedId}', this.value)">
                     ${groupOptions}
                 </select>
-                <select class="b-type" onchange="debouncedCalculate()" style="width:100px;">${typeOptions}</select>
+                <select class="b-type" onchange="debouncedCalculate()">${typeOptions}</select>
                 <input type="number" class="b-val" value="10" style="width:40px" oninput="debouncedCalculate()">%
-                <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${fixedId}'))" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${fixedId}'))" class="buff-delete-btn">×</button>
             </div>
         </div>`;
     
@@ -363,10 +386,6 @@ function removeBuff(buffId) {
 // 渲染Buff显示（取消分页，改为滚动显示）
 function renderBuffPagination() {
     const buffPoolContainer = document.getElementById('buff_pool');
-    // 确保容器有滚动样式
-    buffPoolContainer.style.maxHeight = '500px';
-    buffPoolContainer.style.overflowY = 'auto';
-    buffPoolContainer.style.paddingRight = '5px';
     const allBuffs = buffPoolContainer.querySelectorAll('.buff-config');
     
     // 根据筛选条件过滤BUFF
@@ -412,48 +431,35 @@ function renderBuffPagination() {
         const groupContainer = document.createElement('div');
         groupContainer.className = 'buff-group-container';
         groupContainer.dataset.groupId = groupId;
-        groupContainer.style.marginBottom = '15px';
         groupContainer.style.border = `1px solid ${group.color}`;
-        groupContainer.style.borderRadius = '10px';
-        groupContainer.style.overflow = 'hidden';
-        groupContainer.style.background = 'rgba(255, 255, 255, 0.9)';
         
         // 组标题栏
         const groupHeader = document.createElement('div');
-        groupHeader.style.display = 'flex';
-        groupHeader.style.alignItems = 'center';
-        groupHeader.style.justifyContent = 'space-between';
-        groupHeader.style.padding = '8px 12px';
+        groupHeader.className = 'buff-group-header';
         groupHeader.style.background = hexToRgba(group.color, 0.15);
-        groupHeader.style.cursor = 'pointer';
         groupHeader.style.borderBottom = `1px solid ${group.color}`;
         groupHeader.onclick = () => toggleGroupCollapse(groupId);
         
         // 左侧：组名和数量
         const headerLeft = document.createElement('div');
-        headerLeft.style.display = 'flex';
-        headerLeft.style.alignItems = 'center';
-        headerLeft.style.gap = '8px';
+        headerLeft.className = 'buff-group-header-left';
         
         const toggleIcon = document.createElement('span');
         const isCollapsed = groupCollapsedState[groupId] === true;
+        toggleIcon.className = 'buff-group-toggle-icon';
         toggleIcon.innerHTML = isCollapsed ? '▶' : '▼';
-        toggleIcon.style.fontSize = '12px';
-        toggleIcon.style.transition = 'transform 0.2s';
         if (isCollapsed) {
             toggleIcon.style.transform = 'rotate(-90deg)';
         }
         
         const groupName = document.createElement('span');
+        groupName.className = 'buff-group-name';
         groupName.textContent = group.name;
-        groupName.style.fontWeight = 'bold';
         groupName.style.color = group.color;
-        groupName.style.fontSize = '13px';
         
         const buffCount = document.createElement('span');
+        buffCount.className = 'buff-group-count';
         buffCount.textContent = `(${groupBuffs.length}个)`;
-        buffCount.style.fontSize = '11px';
-        buffCount.style.color = '#8b949e';
         
         headerLeft.appendChild(toggleIcon);
         headerLeft.appendChild(groupName);
@@ -461,18 +467,13 @@ function renderBuffPagination() {
         
         // 右侧：操作按钮
         const headerRight = document.createElement('div');
-        headerRight.style.display = 'flex';
-        headerRight.style.alignItems = 'center';
-        headerRight.style.gap = '6px';
+        headerRight.className = 'buff-group-header-right';
         
         const applyAllBtn = document.createElement('button');
+        applyAllBtn.className = 'buff-group-btn buff-group-apply-btn';
         applyAllBtn.textContent = '应用全部';
-        applyAllBtn.style.padding = '3px 8px';
-        applyAllBtn.style.fontSize = '11px';
         applyAllBtn.style.background = hexToRgba(group.color, 0.2);
-        applyAllBtn.style.border = `1px solid ${group.color}`;
-        applyAllBtn.style.borderRadius = '4px';
-        applyAllBtn.style.cursor = 'pointer';
+        applyAllBtn.style.borderColor = group.color;
         applyAllBtn.style.color = group.color;
         applyAllBtn.onclick = (e) => {
             e.stopPropagation();
@@ -482,14 +483,8 @@ function renderBuffPagination() {
         };
         
         const removeAllBtn = document.createElement('button');
+        removeAllBtn.className = 'buff-group-btn buff-group-remove-btn';
         removeAllBtn.textContent = '取消全部';
-        removeAllBtn.style.padding = '3px 8px';
-        removeAllBtn.style.fontSize = '11px';
-        removeAllBtn.style.background = 'rgba(255, 107, 139, 0.1)';
-        removeAllBtn.style.border = '1px solid #ff6b8b';
-        removeAllBtn.style.borderRadius = '4px';
-        removeAllBtn.style.cursor = 'pointer';
-        removeAllBtn.style.color = '#ff6b8b';
         removeAllBtn.onclick = (e) => {
             e.stopPropagation();
             if (confirm(`确定要从当前动作取消组 "${group.name}" 的所有BUFF吗？`)) {
@@ -506,18 +501,14 @@ function renderBuffPagination() {
         // 组内容区域
         const groupContent = document.createElement('div');
         groupContent.className = 'buff-group-content';
-        groupContent.style.padding = '10px';
         
         // 应用保存的折叠状态
         if (isCollapsed) {
             groupContainer.classList.add('collapsed');
-            groupContent.style.display = 'none';
         }
         
         // 将BUFF元素移动到内容区域
         groupBuffs.forEach(buff => {
-            // 隐藏原始BUFF（通过移动位置，不需要设置display）
-            buff.style.marginBottom = '8px';
             groupContent.appendChild(buff);
         });
         

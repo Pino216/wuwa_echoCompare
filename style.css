@@ -295,6 +295,33 @@
             background: rgba(139, 69, 19, 0.5);
         }
 
+        /* BUFF池滚动容器样式 */
+        #buff_pool {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 5px;
+            scrollbar-width: thin;
+            scrollbar-color: #4a6bff #f0f4ff;
+        }
+
+        #buff_pool::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #buff_pool::-webkit-scrollbar-track {
+            background: #f0f4ff;
+            border-radius: 3px;
+        }
+
+        #buff_pool::-webkit-scrollbar-thumb {
+            background: #4a6bff;
+            border-radius: 3px;
+        }
+
+        #buff_pool::-webkit-scrollbar-thumb:hover {
+            background: #3a5be0;
+        }
+
         /* 顶部按钮样式 */
         .top-buttons {
             display: flex;
@@ -643,4 +670,218 @@
         
         .import-btn {
             background: linear-gradient(135deg, #2196f3, #42a5f5) !important;
+        }
+        
+        /* BUFF组容器样式 */
+        .buff-group-container {
+            margin-bottom: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+        
+        .buff-group-container:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .buff-group-container.collapsed .buff-group-content {
+            display: none;
+        }
+        
+        .buff-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom-width: 1px;
+            border-bottom-style: solid;
+            transition: all 0.3s ease;
+        }
+        
+        .buff-group-header:hover {
+            filter: brightness(0.95);
+        }
+        
+        .buff-group-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .buff-group-toggle-icon {
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+        
+        .buff-group-name {
+            font-weight: bold;
+            font-size: 13px;
+        }
+        
+        .buff-group-count {
+            font-size: 11px;
+            color: #8b949e;
+        }
+        
+        .buff-group-header-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .buff-group-btn {
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid;
+        }
+        
+        .buff-group-apply-btn {
+            background-color: rgba(74, 107, 255, 0.1);
+            border-color: #4a6bff;
+            color: #4a6bff;
+        }
+        
+        .buff-group-remove-btn {
+            background-color: rgba(255, 107, 139, 0.1);
+            border-color: #ff6b8b;
+            color: #ff6b8b;
+        }
+        
+        .buff-group-content {
+            padding: 10px;
+        }
+        
+        .buff-group-content .buff-config {
+            margin-bottom: 8px;
+        }
+        
+        /* BUFF配置项样式 */
+        .buff-config {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .buff-config .b-group {
+            width: 100px;
+            font-size: 11px;
+        }
+        
+        .buff-config .b-type {
+            width: 100px;
+        }
+        
+        .buff-delete-btn {
+            color: #ff6b8b;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 0;
+            margin: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .buff-delete-btn:hover {
+            color: #ff4757;
+            transform: scale(1.1);
+        }
+        
+        /* 组选择器工具栏样式 */
+        .buff-group-toolbar {
+            margin-bottom: 15px;
+        }
+        
+        .group-selector {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        #buff_group_select {
+            min-width: 120px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(74, 107, 255, 0.3);
+            background: white;
+        }
+        
+        .group-selector .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            background: rgba(74, 107, 255, 0.1);
+            border: 1px solid rgba(74, 107, 255, 0.3);
+            color: #4a6bff;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .group-selector .btn-small:hover {
+            background: rgba(74, 107, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        /* 组颜色指示器 */
+        .group-color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        
+        /* BUFF筛选样式 */
+        .buff-filter {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .buff-filter span {
+            font-size: 12px;
+            color: #8B4513;
+        }
+        
+        #buff_group_filter {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(74, 107, 255, 0.3);
+            background: white;
+            font-size: 12px;
+        }
+        
+        .buff-filter button {
+            padding: 4px 8px;
+            font-size: 11px;
+            background: rgba(74, 107, 255, 0.1);
+            border: 1px solid rgba(74, 107, 255, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            color: #4a6bff;
+            transition: all 0.3s ease;
+        }
+        
+        .buff-filter button:hover {
+            background: rgba(74, 107, 255, 0.2);
+        }
+        
+        /* 动作序列容器 */
+        #action_sequence {
+            max-height: 450px;
+            overflow-y: auto;
         }

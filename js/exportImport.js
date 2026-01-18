@@ -462,7 +462,7 @@ function importFromJSON(data, suppressCalculate = false) {
             const bgColor = hexToRgba(groupColor, 0.1);
             const groupOptions = buffGroups.map(g => `<option value="${g.id}" ${g.id === groupId ? 'selected' : ''}>${g.name}</option>`).join('');
             const html = `
-                <div class="buff-config" data-id="${buff.id}" data-group="${groupId}" style="border-left:4px solid ${groupColor}; background:${bgColor}; padding:12px; margin-bottom:10px; border-radius:8px;">
+                <div class="buff-config" data-id="${buff.id}" data-group="${groupId}" style="border-left:4px solid ${groupColor}; background:${bgColor}">
                     <div class="input-row">
                         <input type="text" class="b-name" value="${buff.name || '新Buff'}" style="width:80px" oninput="syncBuffNames('${buff.id}', this.value)">
                         <select class="b-cat" onchange="if(sequence.length>0)calculate(false)">
@@ -476,12 +476,12 @@ function importFromJSON(data, suppressCalculate = false) {
                         </select>
                     </div>
                     <div class="input-row">
-                        <select class="b-group" onchange="changeBuffGroup('${buff.id}', this.value)" style="width:100px; font-size:11px;">
+                        <select class="b-group" onchange="changeBuffGroup('${buff.id}', this.value)">
                             ${groupOptions}
                         </select>
                         <select class="b-type" onchange="if(sequence.length>0)calculate(false)">${typeOptions}</select>
                         <input type="number" class="b-val" value="${(buff.val * 100) || 10}" style="width:40px" oninput="if(sequence.length>0)calculate(false)">%
-                        <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${buff.id}'))" style="color:#ff6b8b; background:none; border:none; cursor:pointer; font-size:16px; font-weight:bold;">×</button>
+                        <button onclick="confirmDelete('确定要删除这个Buff吗？', () => removeBuff('${buff.id}'))" class="buff-delete-btn">×</button>
                     </div>
                 </div>`;
             document.getElementById('buff_pool').insertAdjacentHTML('beforeend', html);
