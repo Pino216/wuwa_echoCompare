@@ -366,6 +366,13 @@ function importFromJSON(data, suppressCalculate = false) {
             // 检查类型是否在DAMAGE_TYPES中
             return DAMAGE_TYPES.some(t => t.id === buff.type);
         });
+        
+        // 确保每个BUFF都有group字段（旧版本数据兼容性）
+        data.buffs.forEach(buff => {
+            if (buff.group === undefined) {
+                buff.group = DEFAULT_GROUP_ID;  // 显式设置默认组
+            }
+        });
     }
     
     // 3. 过滤动作序列
@@ -410,6 +417,12 @@ function importFromJSON(data, suppressCalculate = false) {
     if (!buffGroups.some(g => g.id === currentGroupId)) {
         currentGroupId = DEFAULT_GROUP_ID;
     }
+    
+    // 初始化所有分组的折叠状态（默认展开）
+    groupCollapsedState = {};
+    buffGroups.forEach(group => {
+        groupCollapsedState[group.id] = false; // 默认展开
+    });
     
     // 恢复基础面板数据
     if (data.character) {
@@ -523,6 +536,7 @@ function importFromJSON(data, suppressCalculate = false) {
     // 更新分组选择器
     updateGroupSelect();
     updateBuffFilterSelect();
+    updateAllBuffGroupSelects();  // 确保所有BUFF的分组选择器选项最新
     
     // 只有在不抑制计算时才调用calculate
     if (!suppressCalculate && sequence.length > 0) {

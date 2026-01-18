@@ -60,14 +60,15 @@ function resetToDefaults() {
     document.getElementById('base_cr').value = '60';
     document.getElementById('base_cd').value = '200';
     
+    // 重置分组折叠状态
+    groupCollapsedState = {};
+    
     // 重置静态加成
     document.getElementById('static_bonus_list').innerHTML = '';
     
     // 重置动态Buff池
     document.getElementById('buff_pool').innerHTML = '';
     buffPool = [];
-    buffPage = 1;
-    totalBuffPages = 1;
     
     // 重置动作序列
     sequence = [];

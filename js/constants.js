@@ -33,5 +33,3 @@ const INITIAL_DAMAGE_TYPES = [
 const GROUP_COLORS = ["#4a6bff", "#ff6b8b", "#4caf50", "#ff9800", "#9c27b0", "#00bcd4"];
 const DEFAULT_GROUP_ID = "default";
 
-// 分页设置
-const BUFFS_PER_PAGE = 8;

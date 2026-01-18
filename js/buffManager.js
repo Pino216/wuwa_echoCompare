@@ -6,8 +6,7 @@ let buffPool = [];
 let buffGroups = [{id: DEFAULT_GROUP_ID, name: "默认组", color: GROUP_COLORS[0]}];
 let currentGroupId = DEFAULT_GROUP_ID;
 let buffFilterGroupId = '';
-let buffPage = 1;
-let totalBuffPages = 1;
+let groupCollapsedState = {};
 
 // 获取组颜色
 function getGroupColor(groupId) {
@@ -47,6 +46,17 @@ function updateGroupSelect() {
     updateBuffFilterSelect();
 }
 
+// 更新所有BUFF的分组选择器
+function updateAllBuffGroupSelects() {
+    document.querySelectorAll('.buff-config .b-group').forEach(select => {
+        const selectedGroupId = select.value || DEFAULT_GROUP_ID;
+        const groupOptions = buffGroups.map(g => 
+            `<option value="${g.id}" ${g.id === selectedGroupId ? 'selected' : ''}>${g.name}</option>`
+        ).join('');
+        select.innerHTML = groupOptions;
+    });
+}
+
 // 创建新组
 function createNewGroup() {
     const groupName = prompt('请输入新组名称：', '新组');
@@ -61,8 +71,12 @@ function createNewGroup() {
         color: groupColor
     });
     
+    // 初始化折叠状态
+    groupCollapsedState[groupId] = false;
+    
     currentGroupId = groupId;
     updateGroupSelect();
+    updateAllBuffGroupSelects();  // 更新所有BUFF的分组选择器
     
     // 重新渲染BUFF池以显示新的组
     renderBuffPagination();
@@ -86,6 +100,7 @@ function renameCurrentGroup() {
     
     currentGroup.name = newName.trim();
     updateGroupSelect();
+    updateAllBuffGroupSelects();  // 更新所有BUFF的分组选择器
     
     // 重新渲染BUFF池以更新组名显示
     renderBuffPagination();
@@ -114,6 +129,9 @@ function deleteCurrentGroup() {
         // 将组内的BUFF移动到默认组
         document.querySelectorAll(`.buff-config[data-group="${currentGroupId}"]`).forEach(el => {
             el.dataset.group = DEFAULT_GROUP_ID;
+            // 更新选择器选中值
+            const groupSelect = el.querySelector('.b-group');
+            if (groupSelect) groupSelect.value = DEFAULT_GROUP_ID;
             const groupColor = getGroupColor(DEFAULT_GROUP_ID);
             const bgColor = hexToRgba(groupColor, 0.1);
             el.style.borderLeftColor = groupColor;
@@ -126,9 +144,13 @@ function deleteCurrentGroup() {
     // 删除组
     buffGroups = buffGroups.filter(g => g.id !== currentGroupId);
     
+    // 删除折叠状态
+    delete groupCollapsedState[currentGroupId];
+    
     // 切换到默认组
     currentGroupId = DEFAULT_GROUP_ID;
     updateGroupSelect();
+    updateAllBuffGroupSelects();  // 更新所有BUFF的分组选择器
     
     // 重新渲染
     renderBuffPagination();
@@ -154,13 +176,17 @@ function changeBuffGroup(buffId, newGroupId) {
     // 更新DOM属性
     buffElement.dataset.group = newGroupId;
     
+    // 更新选择器选中值
+    const groupSelect = buffElement.querySelector('.b-group');
+    if (groupSelect) groupSelect.value = newGroupId;
+    
     // 更新颜色样式
     const newGroupColor = getGroupColor(newGroupId);
     const newBgColor = hexToRgba(newGroupColor, 0.1);
     buffElement.style.borderLeftColor = newGroupColor;
     buffElement.style.backgroundColor = newBgColor;
     
-    // 更新BUFF池数据
+    // 更新数据模型
     updateBuffPool(true);
     
     // 重新渲染分页以反映分组变化
@@ -178,9 +204,11 @@ function toggleGroupCollapse(groupId) {
     if (isCollapsed) {
         groupContainer.classList.remove('collapsed');
         if (content) content.style.display = 'block';
+        groupCollapsedState[groupId] = false;
     } else {
         groupContainer.classList.add('collapsed');
         if (content) content.style.display = 'none';
+        groupCollapsedState[groupId] = true;
     }
 }
 
@@ -272,6 +300,7 @@ function updateBuffFilterSelect() {
 function filterBuffsByGroup(groupId) {
     buffFilterGroupId = groupId || '';
     updateBuffFilterSelect();
+    renderBuffPagination(); // 更新BUFF池显示
     renderSequence();
 }
 
@@ -331,31 +360,27 @@ function removeBuff(buffId) {
     }
 }
 
-// 渲染Buff分页
+// 渲染Buff显示（取消分页，改为滚动显示）
 function renderBuffPagination() {
     const buffPoolContainer = document.getElementById('buff_pool');
+    // 确保容器有滚动样式
+    buffPoolContainer.style.maxHeight = '500px';
+    buffPoolContainer.style.overflowY = 'auto';
+    buffPoolContainer.style.paddingRight = '5px';
     const allBuffs = buffPoolContainer.querySelectorAll('.buff-config');
-    const totalBuffs = allBuffs.length;
     
-    // 计算总页数
-    totalBuffPages = Math.ceil(totalBuffs / BUFFS_PER_PAGE);
+    // 根据筛选条件过滤BUFF
+    const filteredBuffs = Array.from(allBuffs).filter(buff => {
+        if (!buffFilterGroupId) return true;
+        const groupId = buff.dataset.group || DEFAULT_GROUP_ID;
+        return groupId === buffFilterGroupId;
+    });
     
-    // 如果当前页大于总页数，回到第一页
-    if (buffPage > totalBuffPages && totalBuffPages > 0) {
-        buffPage = totalBuffPages;
-    }
+    const totalFilteredBuffs = filteredBuffs.length;
     
-    // 获取当前页的BUFF元素
-    const startIndex = (buffPage - 1) * BUFFS_PER_PAGE;
-    const endIndex = startIndex + BUFFS_PER_PAGE;
-    const currentPageBuffs = [];
-    for (let i = startIndex; i < endIndex && i < totalBuffs; i++) {
-        currentPageBuffs.push(allBuffs[i]);
-    }
-    
-    // 按组分组当前页的BUFF
+    // 按组分组所有过滤后的BUFF
     const buffsByGroup = {};
-    currentPageBuffs.forEach(buff => {
+    filteredBuffs.forEach(buff => {
         const groupId = buff.dataset.group || DEFAULT_GROUP_ID;
         if (!buffsByGroup[groupId]) {
             buffsByGroup[groupId] = [];
@@ -365,7 +390,17 @@ function renderBuffPagination() {
     
     // 清除现有的组容器（保留BUFF元素）
     const existingGroups = buffPoolContainer.querySelectorAll('.buff-group-container');
-    existingGroups.forEach(group => group.remove());
+    existingGroups.forEach(group => {
+        // 先提取组内的BUFF元素
+        const groupBuffs = Array.from(group.querySelectorAll('.buff-config'));
+        groupBuffs.forEach(buff => {
+            if (!buff.parentNode.isSameNode(buffPoolContainer)) {
+                // 如果BUFF不在根容器中，先移回根容器
+                buffPoolContainer.appendChild(buff);
+            }
+        });
+        group.remove();
+    });
     
     // 为每个组创建折叠面板
     Object.keys(buffsByGroup).forEach(groupId => {
@@ -401,9 +436,13 @@ function renderBuffPagination() {
         headerLeft.style.gap = '8px';
         
         const toggleIcon = document.createElement('span');
-        toggleIcon.innerHTML = '▼';
+        const isCollapsed = groupCollapsedState[groupId] === true;
+        toggleIcon.innerHTML = isCollapsed ? '▶' : '▼';
         toggleIcon.style.fontSize = '12px';
         toggleIcon.style.transition = 'transform 0.2s';
+        if (isCollapsed) {
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
         
         const groupName = document.createElement('span');
         groupName.textContent = group.name;
@@ -469,6 +508,12 @@ function renderBuffPagination() {
         groupContent.className = 'buff-group-content';
         groupContent.style.padding = '10px';
         
+        // 应用保存的折叠状态
+        if (isCollapsed) {
+            groupContainer.classList.add('collapsed');
+            groupContent.style.display = 'none';
+        }
+        
         // 将BUFF元素移动到内容区域
         groupBuffs.forEach(buff => {
             // 隐藏原始BUFF（通过移动位置，不需要设置display）
@@ -481,58 +526,23 @@ function renderBuffPagination() {
         buffPoolContainer.appendChild(groupContainer);
     });
     
-    // 隐藏不在当前页的BUFF（它们可能还在容器中）
+    // 确保所有BUFF都显示（不再隐藏任何BUFF）
     allBuffs.forEach(buff => {
-        if (!currentPageBuffs.includes(buff)) {
-            buff.style.display = 'none';
-        } else {
-            buff.style.display = 'block';
+        buff.style.display = 'block';
+        // 确保BUFF在DOM中
+        if (!buff.parentNode) {
+            buffPoolContainer.appendChild(buff);
         }
     });
     
-    // 创建或更新分页控件
-    let paginationContainer = document.getElementById('buff_pagination');
-    if (!paginationContainer) {
-        paginationContainer = document.createElement('div');
-        paginationContainer.id = 'buff_pagination';
-        paginationContainer.style.marginTop = '10px';
-        paginationContainer.style.display = 'flex';
-        paginationContainer.style.justifyContent = 'center';
-        paginationContainer.style.alignItems = 'center';
-        paginationContainer.style.gap = '8px';
-        buffPoolContainer.parentNode.insertBefore(paginationContainer, buffPoolContainer.nextSibling);
-    }
-    
-    // 更新分页控件
-    if (totalBuffPages > 1) {
-        let paginationHTML = '';
-        
-        // 上一页按钮
-        paginationHTML += `<button class="pagination-btn" onclick="changeBuffPage(${buffPage - 1})" ${buffPage === 1 ? 'disabled' : ''}>◀</button>`;
-        
-        // 页码显示
-        paginationHTML += `<span style="font-size:12px; color:#8B4513; font-weight:bold;">${buffPage} / ${totalBuffPages}</span>`;
-        
-        // 下一页按钮
-        paginationHTML += `<button class="pagination-btn" onclick="changeBuffPage(${buffPage + 1})" ${buffPage === totalBuffPages ? 'disabled' : ''}>▶</button>`;
-        
-        // 添加Buff数量显示
-        paginationHTML += `<span style="margin-left:10px; font-size:11px; color:#8b949e;">共 ${totalBuffs} 个Buff</span>`;
-        
-        paginationContainer.innerHTML = paginationHTML;
-        paginationContainer.style.display = 'flex';
-    } else {
+    // 隐藏分页控件（如果存在）
+    const paginationContainer = document.getElementById('buff_pagination');
+    if (paginationContainer) {
         paginationContainer.style.display = 'none';
     }
 }
 
-// 切换Buff页码
-function changeBuffPage(newPage) {
-    if (newPage >= 1 && newPage <= totalBuffPages) {
-        buffPage = newPage;
-        renderBuffPagination();
-    }
-}
+
 
 // 同步Buff名称
 function syncBuffNames(id, newName) {
@@ -543,7 +553,7 @@ function syncBuffNames(id, newName) {
 }
 
 // 更新Buff池数据
-function updateBuffPool(skipRenderPagination = false) {
+function updateBuffPool(skipRender = false) {
     buffPool = [];
     document.querySelectorAll('.buff-config').forEach(el => {
         buffPool.push({
@@ -556,8 +566,8 @@ function updateBuffPool(skipRenderPagination = false) {
         });
     });
     
-    // 更新分页显示（可选跳过）
-    if (!skipRenderPagination) {
+    // 更新显示（可选跳过）
+    if (!skipRender) {
         renderBuffPagination();
     }
 }
