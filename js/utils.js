@@ -16,16 +16,7 @@ function hexToRgba(hex, alpha = 0.1) {
 }
 
 // 获取下一个可用的组颜色
-function getNextAvailableColor() {
-    const usedColors = buffGroups.map(g => g.color);
-    for (const color of GROUP_COLORS) {
-        if (!usedColors.includes(color)) {
-            return color;
-        }
-    }
-    // 如果所有颜色都被使用，随机生成一个颜色
-    return '#' + Math.floor(Math.random() * 16777215).toString(16);
-}
+
 
 // 获取伤害类型对应的颜色
 function getColorForType(typeId) {

@@ -42,7 +42,14 @@ function exportToJSON(externalConfig = null) {
                 damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
                     id: t.id,
                     name: t.name
-                }))
+                })),
+                buff_groups: buffGroups,
+                current_group_id: currentGroupId,
+                cr_overflow: {
+                    enabled: document.getElementById('enable_cr_overflow')?.checked || false,
+                    ratio: document.getElementById('cr_to_cd_ratio')?.value || 2,
+                    max_gain: document.getElementById('max_cd_gain')?.value || 100
+                }
             };
         }
         
@@ -135,7 +142,14 @@ function exportToXLSX(externalConfig = null) {
                 damage_types: DAMAGE_TYPES.filter(t => t.id.startsWith('custom_')).map(t => ({
                     id: t.id,
                     name: t.name
-                }))
+                })),
+                buff_groups: buffGroups,
+                current_group_id: currentGroupId,
+                cr_overflow: {
+                    enabled: document.getElementById('enable_cr_overflow')?.checked || false,
+                    ratio: document.getElementById('cr_to_cd_ratio')?.value || 2,
+                    max_gain: document.getElementById('max_cd_gain')?.value || 100
+                }
             };
         }
         
@@ -365,6 +379,22 @@ function importFromJSON(data, suppressCalculate = false) {
     // 恢复BUFF分组数据
     if (data.buff_groups && Array.isArray(data.buff_groups)) {
         buffGroups = data.buff_groups;
+        // 移除重复的默认组（确保有且仅有一个默认组）
+        const defaultGroups = buffGroups.filter(g => g.id === DEFAULT_GROUP_ID);
+        if (defaultGroups.length > 1) {
+            // 保留第一个默认组，移除其他
+            let foundFirst = false;
+            buffGroups = buffGroups.filter(g => {
+                if (g.id === DEFAULT_GROUP_ID) {
+                    if (!foundFirst) {
+                        foundFirst = true;
+                        return true; // 保留第一个
+                    }
+                    return false; // 移除重复
+                }
+                return true; // 保留其他组
+            });
+        }
         // 确保至少有一个默认组
         if (!buffGroups.some(g => g.id === DEFAULT_GROUP_ID)) {
             buffGroups.unshift({id: DEFAULT_GROUP_ID, name: "默认组", color: GROUP_COLORS[0]});
@@ -410,7 +440,11 @@ function importFromJSON(data, suppressCalculate = false) {
             const typeOptions = DAMAGE_TYPES.map(t => 
                 `<option value="${t.id}" ${t.id === buff.type ? 'selected' : ''}>${t.name}</option>`
             ).join('');
-            const groupId = buff.group || DEFAULT_GROUP_ID;
+            let groupId = buff.group || DEFAULT_GROUP_ID;
+            // 验证分组ID是否存在
+            if (!buffGroups.some(g => g.id === groupId)) {
+                groupId = DEFAULT_GROUP_ID;
+            }
             const groupColor = getGroupColor(groupId);
             const bgColor = hexToRgba(groupColor, 0.1);
             const groupOptions = buffGroups.map(g => `<option value="${g.id}" ${g.id === groupId ? 'selected' : ''}>${g.name}</option>`).join('');
@@ -485,6 +519,10 @@ function importFromJSON(data, suppressCalculate = false) {
     
     // 渲染分页
     renderBuffPagination();
+    
+    // 更新分组选择器
+    updateGroupSelect();
+    updateBuffFilterSelect();
     
     // 只有在不抑制计算时才调用calculate
     if (!suppressCalculate && sequence.length > 0) {
