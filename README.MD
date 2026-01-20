@@ -6,7 +6,7 @@
 
 👉 **[点击这里在线使用本工具](https://pino216.github.io/wuwa_echoCompare/)**
 
-📢 注意： 我们正在 **[test/js-refactor] (https://github.com/Pino216/wuwa_echoCompare/tree/test/js-refactor)** 分支进行重构，欢迎前往该分支查看最新的进展和测试版说明。
+📢 注意： 我们正在 **[test/js-refactor](https://github.com/Pino216/wuwa_echoCompare/tree/test/js-refactor)** 分支进行重构，欢迎前往该分支查看最新的进展和测试版说明。
 
 ## ✨ 核心功能
 
